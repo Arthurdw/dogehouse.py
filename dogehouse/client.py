@@ -23,14 +23,15 @@
 
 import asyncio
 import websockets
-from json import loads
+from json import loads, dumps
+from logging import info, debug
 from typing import Awaitable
+from threading import Thread
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
-from logging import debug
 
 from .utils import Repr
 from .config import apiUrl, heartbeatInterval
-from .exceptions import NoConnectionException
+from .exceptions import NoConnectionException, InvalidAccessToken
 
 
 class DogeClient(Repr):
@@ -40,32 +41,60 @@ class DogeClient(Repr):
         self.__socket = None
         self.__active = False
         self.__eventHandlers = []
-        
-    async def __main(self):
+
+    async def __send(self, opcode: str, data: dict):
+        raw = dumps(dict(op=opcode, d=data))
+        await self.__socket.send(raw)
+
+    async def __main(self, loop: asyncio.ProactorEventLoop):
         """This instance handles the websocket connections."""
+        async def event_loop():
+            debug("Starting event listener loop")
+            while self.__active:
+                res = loads(await self.__socket.recv())
+                for handler in self.__eventHandlers:
+                    await handler(res)
+
+        async def heartbeat():
+            debug("Starting heartbeat")
+            while self.__active:
+                await self.__socket.send("ping")
+                await asyncio.sleep(heartbeatInterval)
+
         try:
-            debug("Connecting with dogehouse API")
+            info("Connecting with dogehouse API")
             async with websockets.connect(apiUrl) as ws:
-                debug("dogehouse API connection established successfully")
-                self.__active = True 
+                info("Dogehouse API connection established successfully")
+                self.__active = True
                 self.__socket = ws
-                # print(loads(await ws.recv()))
                 
-                # while self.__active:
-                #     for handler in self.__eventHandlers:
-                #         await handler(loads(await ws.recv()))
+                info("Attemting to authenticate Dogehouse credentials")
+                await self.__send('auth', {
+                    "accessToken": self.__token,
+                    "refreshToken": self.__refresh_token,
+                    "reconnectToVoice": False,
+                    "muted": False,
+                    "currentRoomId": None,
+                    "platform": "bot"
+                })
+                info("Successfully authenticated on Dogehouse.")
+                
+                event_loop_task = loop.create_task(event_loop())
+                await heartbeat()
+                await event_loop_task()
         except ConnectionClosedOK:
-            debug("Dogehouse API connection closed peacefully.")
+            info("Dogehouse API connection closed peacefully.")
             self.__active = False
-        # except ConnectionClosedError:
-            
-    
+        except ConnectionClosedError as e:
+            if (e.code == 4004):
+                raise InvalidAccessToken()
+
     def run(self):
         """Establishes a connection to the websocket servers."""
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.__main())
+        loop.run_until_complete(self.__main(loop))
         loop.close()
-    
+
     async def close(self):
         """
         Closes the established connection.
