@@ -9,7 +9,7 @@ with open(path.join(this_dir, "README.rst"), encoding='utf-8') as f:
     
 setup(
     name='dogehouse',
-    packages=[],
+    packages=["dogehouse"],
     version=__version__,
     license='MIT',
     description='A Python wrapper for the Dogehouse API.',
@@ -25,7 +25,7 @@ setup(
     install_requires=[],
     classifiers=[
         # Development statuses:
-        'Development Status :: 1 - Planning'
+        'Development Status :: 1 - Planning',
         # Development Status :: 2 - Pre-Alpha
         # Development Status :: 3 - Alpha
         # Development Status :: 4 - Beta
