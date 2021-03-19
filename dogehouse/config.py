@@ -21,7 +21,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .client import DogeClient
 
-# Semantic Version
-__version__ = "0.0.0"
+# The socket url for the dogehouse API
+apiUrl ="wss://api.dogehouse.tv/socket"
+
+# The websocket heartbeat interval (ping's on this interval)
+heartbeatInterval = 8_000
+
+# The time it should take for the connection to be determined dead.
+connectionTimeout = 15_000

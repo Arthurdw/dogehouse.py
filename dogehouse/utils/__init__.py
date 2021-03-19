@@ -21,7 +21,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .client import DogeClient
-
-# Semantic Version
-__version__ = "0.0.0"
+from .representation import Represents as Repr
