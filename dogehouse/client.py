@@ -26,7 +26,6 @@ import websockets
 from json import loads, dumps
 from logging import info, debug
 from typing import Awaitable
-from threading import Thread
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
