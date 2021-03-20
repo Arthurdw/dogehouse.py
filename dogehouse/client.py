@@ -23,24 +23,52 @@
 
 import asyncio
 import websockets
+from typing import Awaitable
 from json import loads, dumps
 from logging import info, debug
-from typing import Awaitable
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
+from .entities import User, Room
 from .config import apiUrl, heartbeatInterval
 from .exceptions import NoConnectionException, InvalidAccessToken
 
+listeners = {}
+
+def event(func: Awaitable):
+    listeners[func.__name__] = [func, False]
+    return func
+    
 
 class DogeClient(Repr):
-    def __init__(self, token: str, refresh_token: str):
+    def __init__(self, token: str, refresh_token: str, *, room: int = None, muted: bool = False, reconnect_voice: bool = False):
+        """
+        Initialize your Dogehouse client
+
+        Args:
+            token (str): Your super secret client token.
+            refresh_token (str): Your super secret client refresh token.
+            room (int, optional): The room your client should join. Defaults to None.
+            muted (bool, optional): Wether or not the client should be muted. Defaults to False.
+            reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
+        """
         self.__token = token
         self.__refresh_token = refresh_token
         self.__socket = None
         self.__active = False
-        self.__eventHandlers = []
+        self.__room = room
+        self.__muted = muted
+        self.__reconnect_voice = reconnect_voice
+        self.__listeners = listeners
+        self.user = None
 
+    def listener(self):
+        def decorator(func: Awaitable):
+            self.__listeners[func.__name__] = [func, True]
+            return func
+        
+        return decorator
+        
     async def __send(self, opcode: str, data: dict):
         raw = dumps(dict(op=opcode, d=data))
         await self.__socket.send(raw)
@@ -48,11 +76,22 @@ class DogeClient(Repr):
     async def __main(self, loop: asyncio.ProactorEventLoop):
         """This instance handles the websocket connections."""
         async def event_loop():
+            async def execute_listener(listener: str, *args):
+                listener = self.__listeners.get(listener)
+                if listener:
+                    if listener[1]:
+                        await listener[0](*args)
+                    else:
+                        await listener[0](self, *args)
+
             debug("Starting event listener loop")
             while self.__active:
                 res = loads(await self.__socket.recv())
-                for handler in self.__eventHandlers:
-                    await handler(res)
+                if res.get("op") == "auth-good":
+                    user = res["d"]["user"]
+                    self.user = User(user.get("id"), user.get("username"), user.get("displayname"), user.get(
+                        "avatarUrl"), user.get("bio"), Room(user.get("currentRoomId")), user.get("lastOnline"))
+                    await execute_listener("on_ready")
 
         async def heartbeat():
             debug("Starting heartbeat")
@@ -66,18 +105,18 @@ class DogeClient(Repr):
                 info("Dogehouse API connection established successfully")
                 self.__active = True
                 self.__socket = ws
-                
+
                 info("Attemting to authenticate Dogehouse credentials")
                 await self.__send('auth', {
                     "accessToken": self.__token,
                     "refreshToken": self.__refresh_token,
-                    "reconnectToVoice": False,
-                    "muted": False,
-                    "currentRoomId": None,
-                    "platform": "bot"
+                    "reconnectToVoice": self.__reconnect_voice,
+                    "muted": self.__muted,
+                    "currentRoomId": self.__room,
+                    "platform": "dogehouse.py"
                 })
                 info("Successfully authenticated on Dogehouse.")
-                
+
                 event_loop_task = loop.create_task(event_loop())
                 await heartbeat()
                 await event_loop_task()

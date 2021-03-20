@@ -21,7 +21,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .client import DogeClient, event
+from .utils import Repr
+from dateutil.parser import isoparse
 
-# Semantic Version
-__version__ = "0.0.0"
+
+class Room(Repr):
+    def __init__(self, id: int):
+        self.id = id
+
+
+class User(Repr):
+    def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, room: Room, last_seen: str):
+        self.id = id
+        self.username = username
+        self.displayname = displayname
+        self.avatar_url = avatar_url
+        self.bio = bio
+        self.room = room
+        self.last_seen = isoparse(last_seen)
+        
