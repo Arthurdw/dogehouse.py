@@ -39,7 +39,6 @@ def represents(obj: object) -> str:
     Returns:
         str: A correct representation of the object inlcuding the object parameters.
     """
-    
     def proccess(item: Any):
         if isinstance(item, str) and len(item) > 20:
             item = item[0:17] + "..."

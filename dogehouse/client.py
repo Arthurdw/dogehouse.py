@@ -124,8 +124,11 @@ class DogeClient(Repr):
                             self.rooms = list(map(Room.from_dict, res["d"]["rooms"]))
                         elif fetch == "create_room":
                             info("Dogehouse: Created new room")
-                            room = Room.from_dict(res["d"]["room"])
-                            print(room)
+                            self.room = Room.from_dict(res["d"]["room"])
+                elif op == "you-joined-as-speaker":
+                    await execute_listener("on_room_join", True)
+                elif op == "new_user_join_room":
+                    await execute_listener("on_user_join", User.from_dict(res["d"]["user"]))
 
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")
