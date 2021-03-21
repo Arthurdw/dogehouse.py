@@ -140,10 +140,9 @@ class Message(Repr):
         """Converts the tokens to a proper message"""
         content = []
         for token in self.tokens:
-            if token["t"] == "text":
-                content.append(token["v"])
-            elif token["t"] == "mention":
+            if token["t"] == "mention":
                 content.append(f"@{token['v']}")
+            content.append(token["v"])
         
         return " ".join(content)
     
