@@ -144,7 +144,6 @@ class DogeClient(Repr):
                                 value = " ".join(args[idx::])
                             params[key] = value
                     try:
-                        print(params)
                         asyncio.ensure_future(command[0](*arguments, **params))
                     except TypeError:
                         raise NotEnoughArguments(f"Not enough arguments were provided in command `{command_name}`.")
