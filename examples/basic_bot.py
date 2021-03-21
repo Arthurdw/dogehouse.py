@@ -41,4 +41,4 @@ class Client(DogeClient):
             
 
 if __name__ == "__main__":
-    Client("YourToken", "YourRefreshToken", "prefix").run()
+    Client("YourToken", "YourRefreshToken", prefix=".").run()

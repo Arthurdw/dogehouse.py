@@ -33,4 +33,4 @@ Example
 
         
     if __name__ == "__main__":
-        Client("YourToken", "YourRefreshToken", "!").run()
+        Client("YourToken", "YourRefreshToken", prefix="!").run()
