@@ -101,7 +101,7 @@ class DogeClient(Repr):
                 listener = self.__listeners.get(listener)
                 if listener:
                     asyncio.ensure_future(listener[0](*args) if listener[1] else
-                                          asyncio.create_task(listener[0](self, *args)))
+                                          listener[0](self, *args))
 
             info("Dogehouse: Starting event listener loop")
             while self.__active:

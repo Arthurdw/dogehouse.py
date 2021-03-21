@@ -21,32 +21,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-class DogehouseException(Exception):
-    """The base exceptrion object."""
-    pass
+# ---------------------------------------
+#         Temporary unsupported         #
+# ---------------------------------------
+
+from dogehouse import DogeClient
+from dogehouse.entities import User, Message
 
 
-class InvalidAccessToken(DogehouseException):
-    """The exception that gets thrown when an invalid access token is present."""
-    def __init__(self):
-        message = "An invalid access token is present."
-        super(InvalidAccessToken, self).__init__(message)
+client = DogeClient("YourToken", "YourRefreshToken")
 
 
-class ConnectionTaken(DogehouseException):
-    """The exception that gets thrown when another client has already taken the connection."""
-    def __init__(self):
-        message = "Another client has already taken the connection."
-        super(ConnectionTaken, self).__init__(message)
+@client.listener
+async def on_ready(self):
+    print(f"Successfully connected as {self.user}!")
+    await self.create_room("Hello World!")
 
 
-class NoConnectionException(DogehouseException):
-    """The exception that gets thrown when an action gets executed while no connection has been established yet."""
-    def __init__(self, message: str = None):
-        message = message if message else "No connection has been established yet."
-        super(NoConnectionException, self).__init__(message)
+@client.listener
+async def on_user_join(self, user: User):
+    await self.send(f"Welcome {user.mention}")
 
 
-class InvalidSize(DogehouseException):
-    """The exception that gets thrown when a variable is not within the requested size."""
-    pass
+@client.listener
+async def on_message(self, message: Message):
+    if message.content.startswith("!hello"):
+        await self.send(f"Hello {message.author.mention}")
+            
+
+if __name__ == "__main__":
+    client.run()
