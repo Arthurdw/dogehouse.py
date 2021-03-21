@@ -4,7 +4,7 @@ Python wrapper for the dogehouse API
 Installation
 ------------
 
-`pip install dogehouse`
+``pip install dogehouse``
 
 
 Example
