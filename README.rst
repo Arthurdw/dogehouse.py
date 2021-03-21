@@ -13,7 +13,7 @@ Example
 .. code-block:: python
 
     from dogehouse import DogeClient, event
-    from dogehouse.entities import User, Message
+    from dogehouse.entities import Message
 
 
     class Client(DogeClient):
