@@ -33,6 +33,7 @@ class BaseUser(Repr):
         self.username = username
         self.displayname = displayname
         self.avatar_url = avatar_url
+        self.mention = f"@{username}"
         
     def __str__(self):
         return self.username

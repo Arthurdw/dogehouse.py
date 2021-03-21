@@ -39,8 +39,8 @@ class ConnectionTaken(DogehouseException):
 
 class NoConnectionException(DogehouseException):
     """The exception that gets thrown when an action gets executed while no connection has been established yet."""
-    def __init__(self):
-        message = "No connection has been established yet."
+    def __init__(self, message: str = None):
+        message = message if message else "No connection has been established yet."
         super(NoConnectionException, self).__init__(message)
 
 class InvalidSize(DogehouseException):

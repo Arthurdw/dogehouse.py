@@ -24,9 +24,9 @@
 import asyncio
 import websockets
 from uuid import uuid4
-from typing import Awaitable
 from json import loads, dumps
 from logging import info, debug
+from typing import Awaitable, List
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
@@ -265,3 +265,33 @@ class DogeClient(Repr):
             id (str): The ID of the room you want to join.
         """
         await self.__send("join_room", dict(roomId=id))
+        
+    async def send(self, message: str, *, whisper: List[str] = []) -> None:
+        """
+        Send a message to the current room.
+
+        Args:
+            message (str): The message that should be sent.
+            whisper (List[str], optional): A collection of user id's who should only see the message. Defaults to [].
+        
+        Raises:
+            NoConnectionException: Gets thrown when the client hasn't joined a room yet.
+        """
+        if not self.room:
+            raise NoConnectionException("No room has been joined yet!")
+        
+        def parse_message():
+            tokens = []
+            for token in message.split(" "):
+                t, v = "text", token
+                if v.startswith("@") and len(v) >= 3:
+                    t = "mention"
+                    v = v[1:]
+                elif v.startswith("http") and len(v) >= 8:
+                    t = "link"
+                
+                tokens.append(dict(t=t, v=v))
+                
+            return tokens
+        
+        await self.__send("send_room_chat_msg", dict(whisperedTo=whisper, tokens=parse_message()))
