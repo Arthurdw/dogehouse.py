@@ -24,4 +24,4 @@
 from .client import DogeClient, event
 
 # Semantic Version
-__version__ = "0.0.0"
+__version__ = "0.1.0"
