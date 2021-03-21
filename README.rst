@@ -21,11 +21,6 @@ Example
         async def on_ready(self):
             print(f"Successfully connected as {self.user}!")
             await self.create_room("Hello World!")
-            
-        @event
-        async def on_message(self, message: Message):
-            if message.content.startswith("!foo"):
-                await self.send(f"bar")
         
         @command
         async def foo(self, ctx: Message):
