@@ -40,13 +40,13 @@ listeners = {}
 def event(func: Awaitable):
     """
     Create an event listener for dogehouse.
-    
+
     Example:
         class Client(dogehouse.DogeClient):
             @dogehouse.event
             async def on_ready(self):
                 print(f"Logged in as {self.user.username}")
-        
+
         if __name__ == "__main__":
             Client("token", "refresh_token").run()
     """
@@ -56,7 +56,8 @@ def event(func: Awaitable):
 
 class DogeClient(Repr):
     """Represents your Dogehouse client."""
-    def __init__(self, token: str, refresh_token: str, *, room: int = None, muted: bool = False, reconnect_voice: bool = False):
+
+    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False):
         """
         Initialize your Dogehouse client
 
@@ -68,49 +69,23 @@ class DogeClient(Repr):
             reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
         """
         self.user = None
+        self.room = room
         self.rooms = []
 
         self.__token = token
         self.__refresh_token = refresh_token
         self.__socket = None
         self.__active = False
-        self.__room = room
         self.__muted = muted
         self.__reconnect_voice = reconnect_voice
         self.__listeners = listeners
         self.__fetches = {}
 
-    def listener(self, name: str = None):
-        """
-        Create an event listener for dogehouse.
+    async def __fetch(self, op: str, data: dict):
+        fetch = str(uuid4())
 
-        Args:
-            name (str, optional): The name of the event. Defaults to the function name.
-            
-        Example:
-            client = dogehouse.DogeClient("token", "refresh_token")
-            
-            @client.listener()
-            async def on_ready():
-                print(f"Logged in as {self.user.username}")
-            
-            client.run()
-            
-            # Or:
-            
-            client = dogehouse.DogeClient("token", "refresh_token")
-            
-            @client.listener(name="on_ready")
-            async def bot_has_started():
-                print(f"Logged in as {self.user.username}")
-            
-            client.run()
-        """
-        def decorator(func: Awaitable):
-            self.__listeners[name if name else func.__name__] = [func, True]
-            return func
-
-        return decorator
+        await self.__send(op, data, fetch_id=fetch)
+        self.__fetches[fetch] = op
 
     async def __send(self, opcode: str, data: dict, *, fetch_id: str = None):
         """Internal websocket sender method."""
@@ -125,8 +100,8 @@ class DogeClient(Repr):
             async def execute_listener(listener: str, *args):
                 listener = self.__listeners.get(listener)
                 if listener:
-                    asyncio.ensure_future(listener[0](
-                        *args) if listener[1] else asyncio.create_task(listener[0](self, *args)))
+                    asyncio.ensure_future(listener[0](*args) if listener[1] else
+                                          asyncio.create_task(listener[0](self, *args)))
 
             info("Dogehouse: Starting event listener loop")
             while self.__active:
@@ -134,23 +109,23 @@ class DogeClient(Repr):
                 op = res if isinstance(res, str) else res.get("op")
                 if op == "auth-good":
                     info("Dogehouse: Received client ready")
-                    user = res["d"]["user"]
-                    self.user = User(user.get("id"), user.get("username"), user.get("displayname"), user.get(
-                        "avatarUrl"), user.get("bio"), user.get("lastOnline"))
+                    self.user = User.from_dict(res["d"]["user"])
                     await execute_listener("on_ready")
                 elif op == "new-tokens":
                     info("Dogehouse: Received new authorization tokens")
                     self.__token = res["d"]["accessToken"]
                     self.__refresh_token = res["d"]["refreshToken"]
-
-                if op == "fetch_done":
+                elif op == "fetch_done":
                     fetch = self.__fetches.get(res.get("fetchId"), False)
                     if fetch:
                         del self.__fetches[res.get("fetchId")]
                         if fetch == "get_top_public_rooms":
                             info("Dogehouse: Received new rooms")
-                            self.rooms = [Room(room["id"], room["creatorId"], room["name"], room["description"], room["inserted_at"], room["isPrivate"], room["numPeopleInside"],
-                                               [UserPreview(user["id"], user["displayName"], user["numFollowers"]) for user in room["peoplePreviewList"]]) for room in res["d"]["rooms"]]
+                            self.rooms = list(map(Room.from_dict, res["d"]["rooms"]))
+                        elif fetch == "create_room":
+                            info("Dogehouse: Created new room")
+                            room = Room.from_dict(res["d"]["room"])
+                            print(room)
 
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")
@@ -160,7 +135,7 @@ class DogeClient(Repr):
 
         async def get_top_rooms_loop():
             debug("Dogehouse: Starting to get all rooms")
-            while self.__active:
+            while self.__active and not self.room:
                 await self.get_top_public_rooms()
                 await asyncio.sleep(topPublicRoomsInterval)
 
@@ -177,7 +152,7 @@ class DogeClient(Repr):
                     "refreshToken": self.__refresh_token,
                     "reconnectToVoice": self.__reconnect_voice,
                     "muted": self.__muted,
-                    "currentRoomId": self.__room,
+                    "currentRoomId": self.room,
                     "platform": "dogehouse.py"
                 })
                 info("Dogehouse: Successfully authenticated")
@@ -211,17 +186,58 @@ class DogeClient(Repr):
             raise NoConnectionException()
 
         self.__active = False
+        
+    def listener(self, name: str = None):
+        """
+        Create an event listener for dogehouse.
+
+        Args:
+            name (str, optional): The name of the event. Defaults to the function name.
+
+        Example:
+            client = dogehouse.DogeClient("token", "refresh_token")
+
+            @client.listener()
+            async def on_ready():
+                print(f"Logged in as {self.user.username}")
+
+            client.run()
+
+            # Or:
+
+            client = dogehouse.DogeClient("token", "refresh_token")
+
+            @client.listener(name="on_ready")
+            async def bot_has_started():
+                print(f"Logged in as {self.user.username}")
+
+            client.run()
+        """
+        def decorator(func: Awaitable):
+            self.__listeners[name if name else func.__name__] = [func, True]
+            return func
+
+        return decorator
 
     async def get_top_public_rooms(self, *, cursor=0) -> None:
         """
         Manually send a request to update the client rooms property.
         This method gets triggered every X seconds. (Stated in dogehouse.config.topPublicRoomsInterval)
-        
+
         Args:
             # TODO: Add cursor description
             cursor (int, optional): [description]. Defaults to 0.
         """
-        fetch = str(uuid4())
+        await self.__fetch("get_top_public_rooms", dict(cursor=cursor))
+        
+    async def create_room(self, name: str, description: str, *, public = True) -> None:
+        """
+        Creates a room, when the room is created a request will be sent to join the room.
+        When the client joins the room the `on_room_join` event will be triggered.
 
-        await self.__send("get_top_public_rooms", dict(cursor=cursor), fetch_id=fetch)
-        self.__fetches[fetch] = "get_top_public_rooms"
+        Args:
+            name (str): The name for room.
+            description (str): The description for the room.
+            public (bool, optional): Wether or not the room should be publicly visible. Defaults to True.
+        """
+        await self.__fetch("create_room", dict(name=name, description=description, privacy="public" if public else "private"))

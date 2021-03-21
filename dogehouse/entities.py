@@ -36,12 +36,38 @@ class User(Repr):
         self.bio = bio
         self.last_seen = isoparse(last_seen)
 
+    @staticmethod
+    def from_dict(data: dict):
+        """
+        Parses a User object from a dictionary.
+
+        Args:
+            data (dict): The parsed json websocket response.
+
+        Returns:
+            User: A parsed User object which contains the data from the dictionary.
+        """
+        return User(data.get("id"), data.get("username"), data.get("displayname"), data.get("avatarUrl"), data.get("bio"), data.get("lastOnline"))
+
 
 class UserPreview(Repr):
     def __init__(self, id: str, displayname: str, num_followers: int):
         self.id = id
         self.displayname = displayname
         self.num_followers = num_followers
+
+    @staticmethod
+    def from_dict(data: dict):
+        """
+        Parses a UserPreview object from a dictionary.
+
+        Args:
+            data (dict): The parsed json websocket response.
+
+        Returns:
+            UserPreview: A parsed userpreview object which contains the data from the dictionary.
+        """
+        return UserPreview(data["id"], data["displayName"], data["numFollowers"])
 
 
 class Room(Repr):
@@ -54,3 +80,17 @@ class Room(Repr):
         self.is_private = is_private
         self.count = count
         self.users = users
+
+    @staticmethod
+    def from_dict(data: dict):
+        """
+        Parses a Room object from a dictionary.
+
+        Args:
+            data (dict): The parsed json websocket response.
+
+        Returns:
+            Room: A parsed room object which contains the data from the dictionary.
+        """
+        return Room(data["id"], data["creatorId"], data["name"], data["description"], data["inserted_at"], data["isPrivate"], data["numPeopleInside"],
+                    list(map(UserPreview.from_dict, data["peoplePreviewList"])))
