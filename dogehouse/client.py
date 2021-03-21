@@ -25,6 +25,7 @@ import asyncio
 import websockets
 from uuid import uuid4
 from json import loads, dumps
+from inspect import signature
 from logging import info, debug
 from typing import Awaitable, List
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
@@ -32,9 +33,10 @@ from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from .utils import Repr
 from .entities import User, Room, UserPreview, Message
 from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
-from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize
+from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound
 
 listeners = {}
+commands = {}
 
 
 def event(func: Awaitable):
@@ -50,14 +52,32 @@ def event(func: Awaitable):
         if __name__ == "__main__":
             Client("token", "refresh_token").run()
     """
-    listeners[func.__name__] = [func, False]
+    listeners[func.__name__.lower()] = [func, False]
     return func
+
+
+def command(func: Awaitable):
+    """
+    Create a new command for dogehouse.
+
+    Example:
+        class Client(dogehouse.DogeClient):
+            @dogehouse.command
+            async def hello(self, ctx):
+                await self.send(f"Hello {ctx.author.mention}")
+
+        if __name__ == "__main__":
+            Client("token", "refresh_token").run()
+    """
+    commands[func.__name__.lower()] = [func, False]
+    return func
+    
 
 
 class DogeClient(Repr):
     """Represents your Dogehouse client."""
 
-    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False):
+    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False, prefix: str = "!"):
         """
         Initialize your Dogehouse client
 
@@ -71,6 +91,7 @@ class DogeClient(Repr):
         self.user = None
         self.room = room
         self.rooms = []
+        self.prefix = prefix
 
         self.__token = token
         self.__refresh_token = refresh_token
@@ -80,6 +101,7 @@ class DogeClient(Repr):
         self.__reconnect_voice = reconnect_voice
         self.__listeners = listeners
         self.__fetches = {}
+        self.__commands = commands
 
     async def __fetch(self, op: str, data: dict):
         fetch = str(uuid4())
@@ -96,12 +118,38 @@ class DogeClient(Repr):
 
     async def __main(self, loop: asyncio.ProactorEventLoop):
         """This instance handles the websocket connections."""
-        async def event_loop():
+        async def event_loop():            
             async def execute_listener(listener: str, *args):
-                listener = self.__listeners.get(listener)
+                listener = self.__listeners.get(listener.lower())
                 if listener:
                     asyncio.ensure_future(listener[0](*args) if listener[1] else
                                           listener[0](self, *args))
+                    
+            async def execute_command(command_name: str, ctx: Message, *args):
+                command = self.__commands.get(command_name.lower())
+                if command:
+                    arguments = []
+                    params = {}
+                    parameters = list(signature(command[0]).parameters.items())
+                    if not command[1]:
+                        arguments.append(self)
+                        parameters.pop(0)
+                    
+                    if parameters:
+                        arguments.append(ctx)
+                        parameters.pop(0)
+                        for idx, (key, param) in enumerate(parameters):
+                            value = args[idx]
+                            if param.kind == param.KEYWORD_ONLY:
+                                value = " ".join(args[idx::])
+                            params[key] = value
+                    try:
+                        print(params)
+                        asyncio.ensure_future(command[0](*arguments, **params))
+                    except TypeError:
+                        raise NotEnoughArguments(f"Not enough arguments were provided in command `{command_name}`.")
+                else:
+                    raise CommandNotFound(f"The requested command `{command_name}` does not exist.")
 
             info("Dogehouse: Starting event listener loop")
             while self.__active:
@@ -138,6 +186,12 @@ class DogeClient(Repr):
                 elif op == "new_chat_msg":
                     msg = Message.from_dict(res["d"]["msg"])
                     await execute_listener("on_message", msg)
+                    try:
+                        if msg.content.startswith(self.prefix) and len(msg.content) > len(self.prefix) + 1:
+                            splitted = msg.content[len(self.prefix)::].split(" ")
+                            await execute_command(splitted[0], msg, *splitted[1::])
+                    except Exception as e:
+                        await execute_listener("on_error", e)
 
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")
@@ -226,7 +280,39 @@ class DogeClient(Repr):
             client.run()
         """
         def decorator(func: Awaitable):
-            self.__listeners[name if name else func.__name__] = [func, True]
+            self.__listeners[(name if name else func.__name__).lower()] = [func, True]
+            return func
+
+        return decorator
+        
+    def command(self, name: str = None):
+        """
+        Create an command for dogehouse.
+
+        Args:
+            name (str, optional): The name of the command. Defaults to the function name.
+
+        Example:
+            client = dogehouse.DogeClient("token", "refresh_token")
+
+            @client.command()
+            async def hello(ctx):
+                await client.send(f"Hello {ctx.author.mention}")
+
+            client.run()
+
+            # Or:
+
+            client = dogehouse.DogeClient("token", "refresh_token")
+
+            @client.listener(name="hello")
+            async def hello_command(ctx):
+                await client.send(f"Hello {ctx.author.mention}")
+
+            client.run()
+        """
+        def decorator(func: Awaitable):
+            self.__commands[(name if name else func.__name__).lower()] = [func, True]
             return func
 
         return decorator

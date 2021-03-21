@@ -12,7 +12,7 @@ Example
 
 .. code-block:: python
 
-    from dogehouse import DogeClient, event
+    from dogehouse import DogeClient, event, command
     from dogehouse.entities import Message
 
 
@@ -26,7 +26,11 @@ Example
         async def on_message(self, message: Message):
             if message.content.startswith("!foo"):
                 await self.send(f"bar")
-                
+        
+        @command
+        async def foo(self, ctx: Message):
+            await self.send("bar")
 
+        
     if __name__ == "__main__":
-        Client("YourToken", "YourRefreshToken").run()
+        Client("YourToken", "YourRefreshToken", "!").run()

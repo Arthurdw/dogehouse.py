@@ -2,3 +2,10 @@
 README.rst
 setup.cfg
 setup.py
+dogehouse\__init__.py
+dogehouse\client.py
+dogehouse\config.py
+dogehouse\entities.py
+dogehouse\exceptions.py
+dogehouse\utils\__init__.py
+dogehouse\utils\representation.py

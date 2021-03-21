@@ -142,7 +142,8 @@ class Message(Repr):
         for token in self.tokens:
             if token["t"] == "mention":
                 content.append(f"@{token['v']}")
-            content.append(token["v"])
+            else:
+                content.append(token["v"])
         
         return " ".join(content)
     

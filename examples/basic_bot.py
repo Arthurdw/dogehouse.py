@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from dogehouse import DogeClient, event
+from dogehouse import DogeClient, event, command
 from dogehouse.entities import User, Message
 
 
@@ -35,11 +35,10 @@ class Client(DogeClient):
     async def on_user_join(self, user: User):
         await self.send(f"Welcome {user.mention}")
         
-    @event
-    async def on_message(self, message: Message):
-        if message.content.startswith("!hello"):
-            await self.send(f"Hello {message.author.mention}")
+    @command
+    async def say(self, ctx: Message, *, message):
+        await self.send(message)
             
 
 if __name__ == "__main__":
-    Client("YourToken", "YourRefreshToken").run()
+    Client("YourToken", "YourRefreshToken", "prefix").run()

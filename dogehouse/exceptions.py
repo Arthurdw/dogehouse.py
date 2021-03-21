@@ -50,3 +50,13 @@ class NoConnectionException(DogehouseException):
 class InvalidSize(DogehouseException):
     """The exception that gets thrown when a variable is not within the requested size."""
     pass
+
+
+class NotEnoughArguments(DogehouseException):
+    """Not enough arguments where provided."""
+    pass
+
+
+class CommandNotFound(DogehouseException):
+    """Command is not registered."""
+    pass
