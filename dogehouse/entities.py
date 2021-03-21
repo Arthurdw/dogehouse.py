@@ -23,18 +23,42 @@
 
 from .utils import Repr
 
-from typing import List
+from typing import List, Dict
 from dateutil.parser import isoparse
 
 
-class User(Repr):
-    def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str):
+class BaseUser(Repr):
+    def __init__(self, id: str, username: str, displayname: str, avatar_url: str):
         self.id = id
         self.username = username
         self.displayname = displayname
         self.avatar_url = avatar_url
+        
+    def __str__(self):
+        return self.username
+
+    @staticmethod
+    def from_dict(data: dict):
+        """
+        Parses a BaseUser object from a dictionary.
+
+        Args:
+            data (dict): The parsed json websocket response.
+
+        Returns:
+            BaseUser: A parsed BaseUser object which contains the data from the dictionary.
+        """
+        return BaseUser(data.get("userId"), data.get("username"), data.get("displayName"), data.get("avatarUrl"))
+
+
+class User(BaseUser, Repr):
+    def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str):
+        super().__init__(id, username, displayname, avatar_url)
         self.bio = bio
         self.last_seen = isoparse(last_seen)
+
+    def __str__(self):
+        return self.username
 
     @staticmethod
     def from_dict(data: dict):
@@ -55,6 +79,9 @@ class UserPreview(Repr):
         self.id = id
         self.displayname = displayname
         self.num_followers = num_followers
+
+    def __str__(self):
+        return self.displayname
 
     @staticmethod
     def from_dict(data: dict):
@@ -94,3 +121,40 @@ class Room(Repr):
         """
         return Room(data["id"], data["creatorId"], data["name"], data["description"], data["inserted_at"], data["isPrivate"], data["numPeopleInside"],
                     list(map(UserPreview.from_dict, data["peoplePreviewList"])))
+
+
+class Message(Repr):
+    def __init__(self, id: str, tokens: List[Dict[str, str]], is_wisper: bool, created_at: str, author: BaseUser):
+        self.id = id
+        self.tokens = tokens
+        self.is_wisper = is_wisper
+        self.created_at = isoparse(created_at)
+        self.author = author
+        self.content = self.__convert_tokens()
+    
+    def __str__(self):
+        return self.content
+    
+    def __convert_tokens(self) -> str:
+        """Converts the tokens to a proper message"""
+        content = []
+        for token in self.tokens:
+            if token["t"] == "text":
+                content.append(token["v"])
+            elif token["t"] == "mention":
+                content.append(f"@{token['v']}")
+        
+        return " ".join(content)
+    
+    @staticmethod
+    def from_dict(data: dict):
+        """
+        Parses a Message object from a dictionary.
+
+        Args:
+            data (dict): The parsed json websocket response.
+
+        Returns:
+            Message: A parsed message object which contains the data from the dictionary.
+        """
+        return Message(data["id"], data["tokens"], data["isWhisper"], data["sentAt"], BaseUser.from_dict(data))

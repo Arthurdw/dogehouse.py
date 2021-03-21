@@ -42,3 +42,7 @@ class NoConnectionException(DogehouseException):
     def __init__(self):
         message = "No connection has been established yet."
         super(NoConnectionException, self).__init__(message)
+
+class InvalidSize(DogehouseException):
+    """The exception that gets thrown when a variable is not within the requested size."""
+    pass

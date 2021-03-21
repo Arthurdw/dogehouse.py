@@ -30,9 +30,9 @@ from logging import info, debug
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
-from .entities import User, Room, UserPreview
-from .exceptions import NoConnectionException, InvalidAccessToken
+from .entities import User, Room, UserPreview, Message
 from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
+from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize
 
 listeners = {}
 
@@ -127,8 +127,17 @@ class DogeClient(Repr):
                             self.room = Room.from_dict(res["d"]["room"])
                 elif op == "you-joined-as-speaker":
                     await execute_listener("on_room_join", True)
+                elif op == "join_room_done":
+                    self.room = Room.from_dict(res["d"]["room"])
+                    await execute_listener("on_room_join", False)
                 elif op == "new_user_join_room":
                     await execute_listener("on_user_join", User.from_dict(res["d"]["user"]))
+                elif op == "user_left_room":
+                    await self.get_top_public_rooms()
+                    await execute_listener("on_user_leave", res["d"]["userId"])
+                elif op == "new_chat_msg":
+                    msg = Message.from_dict(res["d"]["msg"])
+                    await execute_listener("on_message", msg)
 
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")
@@ -233,7 +242,7 @@ class DogeClient(Repr):
         """
         await self.__fetch("get_top_public_rooms", dict(cursor=cursor))
         
-    async def create_room(self, name: str, description: str, *, public = True) -> None:
+    async def create_room(self, name: str, description: str = "", *, public = True) -> None:
         """
         Creates a room, when the room is created a request will be sent to join the room.
         When the client joins the room the `on_room_join` event will be triggered.
@@ -243,4 +252,16 @@ class DogeClient(Repr):
             description (str): The description for the room.
             public (bool, optional): Wether or not the room should be publicly visible. Defaults to True.
         """
-        await self.__fetch("create_room", dict(name=name, description=description, privacy="public" if public else "private"))
+        if 2 <= len(name) <= 60:
+            return await self.__fetch("create_room", dict(name=name, description=description, privacy="public" if public else "private"))
+        
+        raise InvalidSize("The `name` property length should be 2-60 characters long.")
+
+    async def join_room(self, id: str) -> None:
+        """
+        Send a request to join a room as a listener.
+
+        Args:
+            id (str): The ID of the room you want to join.
+        """
+        await self.__send("join_room", dict(roomId=id))
