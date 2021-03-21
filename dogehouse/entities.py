@@ -22,21 +22,35 @@
 # SOFTWARE.
 
 from .utils import Repr
+
+from typing import List
 from dateutil.parser import isoparse
 
 
-class Room(Repr):
-    def __init__(self, id: int):
-        self.id = id
-
-
 class User(Repr):
-    def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, room: Room, last_seen: str):
+    def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str):
         self.id = id
         self.username = username
         self.displayname = displayname
         self.avatar_url = avatar_url
         self.bio = bio
-        self.room = room
         self.last_seen = isoparse(last_seen)
-        
+
+
+class UserPreview(Repr):
+    def __init__(self, id: str, displayname: str, num_followers: int):
+        self.id = id
+        self.displayname = displayname
+        self.num_followers = num_followers
+
+
+class Room(Repr):
+    def __init__(self, id: str, creator_id: str, name: str, description: str, created_at: str, is_private: bool, count: int, users: List[UserPreview]):
+        self.id = id
+        self.creator_id = creator_id
+        self.name = name
+        self.description = description
+        self.created_at = isoparse(created_at)
+        self.is_private = is_private
+        self.count = count
+        self.users = users

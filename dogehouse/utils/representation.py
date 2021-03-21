@@ -21,6 +21,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from typing import Any
+
+
 class Represents:
     """Handles representations for classes"""
     def __repr__(self):
@@ -36,5 +39,11 @@ def represents(obj: object) -> str:
     Returns:
         str: A correct representation of the object inlcuding the object parameters.
     """
+    
+    def proccess(item: Any):
+        if isinstance(item, str) and len(item) > 20:
+            item = item[0:17] + "..."
+        return item
+    
     items = [i for i in vars(obj).items() if not i[0].startswith("_")]
-    return f"<{obj.__class__.__name__} {' '.join(list(map(lambda p: f'{p[0]}={p[1]}', items)))}>"
+    return f"<{obj.__class__.__name__} {' '.join(list(map(lambda p: f'{p[0]}={proccess(p[1])}', items)))}>"

@@ -23,22 +23,24 @@
 
 import asyncio
 import websockets
+from uuid import uuid4
 from typing import Awaitable
 from json import loads, dumps
 from logging import info, debug
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
-from .entities import User, Room
-from .config import apiUrl, heartbeatInterval
+from .entities import User, Room, UserPreview
 from .exceptions import NoConnectionException, InvalidAccessToken
+from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
 
 listeners = {}
+
 
 def event(func: Awaitable):
     listeners[func.__name__] = [func, False]
     return func
-    
+
 
 class DogeClient(Repr):
     def __init__(self, token: str, refresh_token: str, *, room: int = None, muted: bool = False, reconnect_voice: bool = False):
@@ -52,6 +54,9 @@ class DogeClient(Repr):
             muted (bool, optional): Wether or not the client should be muted. Defaults to False.
             reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
         """
+        self.user = None
+        self.rooms = []
+
         self.__token = token
         self.__refresh_token = refresh_token
         self.__socket = None
@@ -60,18 +65,25 @@ class DogeClient(Repr):
         self.__muted = muted
         self.__reconnect_voice = reconnect_voice
         self.__listeners = listeners
-        self.user = None
+        self.__fetches = {}
 
-    def listener(self):
+    def listener(self, name: str = None):
+        """
+        Listenes to a dogeclient event.
+        """
+        # TODO: fix docs
         def decorator(func: Awaitable):
-            self.__listeners[func.__name__] = [func, True]
+            self.__listeners[name if name else func.__name__] = [func, True]
             return func
-        
+
         return decorator
-        
-    async def __send(self, opcode: str, data: dict):
-        raw = dumps(dict(op=opcode, d=data))
-        await self.__socket.send(raw)
+
+    async def __send(self, opcode: str, data: dict, *, fetch_id: str = None):
+        """Internal websocket sender method."""
+        raw_data = dict(op=opcode, d=data)
+        if fetch_id:
+            raw_data["fetchId"] = fetch_id
+        await self.__socket.send(dumps(raw_data))
 
     async def __main(self, loop: asyncio.ProactorEventLoop):
         """This instance handles the websocket connections."""
@@ -79,34 +91,52 @@ class DogeClient(Repr):
             async def execute_listener(listener: str, *args):
                 listener = self.__listeners.get(listener)
                 if listener:
-                    if listener[1]:
-                        await listener[0](*args)
-                    else:
-                        await listener[0](self, *args)
+                    asyncio.ensure_future(listener[0](
+                        *args) if listener[1] else asyncio.create_task(listener[0](self, *args)))
 
-            debug("Starting event listener loop")
+            info("Dogehouse: Starting event listener loop")
             while self.__active:
                 res = loads(await self.__socket.recv())
-                if res.get("op") == "auth-good":
+                op = res if isinstance(res, str) else res.get("op")
+                if op == "auth-good":
+                    info("Dogehouse: Received client ready")
                     user = res["d"]["user"]
                     self.user = User(user.get("id"), user.get("username"), user.get("displayname"), user.get(
-                        "avatarUrl"), user.get("bio"), Room(user.get("currentRoomId")), user.get("lastOnline"))
+                        "avatarUrl"), user.get("bio"), user.get("lastOnline"))
                     await execute_listener("on_ready")
+                elif op == "new-tokens":
+                    info("Dogehouse: Received new authorization tokens")
+                    self.__token = res["d"]["accessToken"]
+                    self.__refresh_token = res["d"]["refreshToken"]
+
+                if op == "fetch_done":
+                    fetch = self.__fetches.get(res.get("fetchId"), False)
+                    if fetch:
+                        if fetch == "get_top_public_rooms":
+                            info("Dogehouse: Received new rooms")
+                            self.rooms = [Room(room["id"], room["creatorId"], room["name"], room["description"], room["inserted_at"], room["isPrivate"], room["numPeopleInside"],
+                                               [UserPreview(user["id"], user["displayName"], user["numFollowers"]) for user in room["peoplePreviewList"]]) for room in res["d"]["rooms"]]
 
         async def heartbeat():
-            debug("Starting heartbeat")
+            debug("Dogehouse: Starting heartbeat")
             while self.__active:
                 await self.__socket.send("ping")
                 await asyncio.sleep(heartbeatInterval)
 
+        async def get_top_rooms_loop():
+            debug("Dogehouse: Starting to get all rooms")
+            while self.__active:
+                await self.get_top_public_rooms()
+                await asyncio.sleep(topPublicRoomsInterval)
+
         try:
-            info("Connecting with dogehouse API")
+            info("Dogehouse: Connecting with Dogehouse websocket")
             async with websockets.connect(apiUrl) as ws:
-                info("Dogehouse API connection established successfully")
+                info("Dogehouse: Websocket connection established successfully")
                 self.__active = True
                 self.__socket = ws
 
-                info("Attemting to authenticate Dogehouse credentials")
+                info("Dogehouse: Attemting to authenticate")
                 await self.__send('auth', {
                     "accessToken": self.__token,
                     "refreshToken": self.__refresh_token,
@@ -115,13 +145,15 @@ class DogeClient(Repr):
                     "currentRoomId": self.__room,
                     "platform": "dogehouse.py"
                 })
-                info("Successfully authenticated on Dogehouse.")
+                info("Dogehouse: Successfully authenticated")
 
                 event_loop_task = loop.create_task(event_loop())
+                get_top_rooms_task = loop.create_task(get_top_rooms_loop())
                 await heartbeat()
                 await event_loop_task()
+                await get_top_rooms_task()
         except ConnectionClosedOK:
-            info("Dogehouse API connection closed peacefully.")
+            info("Dogehouse: Websocket connection closed peacefully")
             self.__active = False
         except ConnectionClosedError as e:
             if (e.code == 4004):
@@ -144,3 +176,9 @@ class DogeClient(Repr):
             raise NoConnectionException()
 
         self.__active = False
+
+    async def get_top_public_rooms(self, *, cursor=0) -> None:
+        fetch = str(uuid4())
+
+        await self.__send("get_top_public_rooms", dict(cursor=cursor), fetch_id=fetch)
+        self.__fetches[fetch] = "get_top_public_rooms"

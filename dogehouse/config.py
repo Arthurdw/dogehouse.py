@@ -26,7 +26,10 @@
 apiUrl ="wss://api.dogehouse.tv/socket"
 
 # The websocket heartbeat interval (ping's on this interval)
-heartbeatInterval = 8.000
+heartbeatInterval = 8
+
+# The interval for the public rooms requests
+topPublicRoomsInterval = 15
 
 # The time it should take for the connection to be determined dead.
-connectionTimeout = 15.000
+connectionTimeout = 15
