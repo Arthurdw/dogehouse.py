@@ -373,6 +373,9 @@ class DogeClient(Repr):
                     v = v[1:]
                 elif v.startswith("http") and len(v) >= 8:
                     t = "link"
+                elif v.startswith(":") and v.endswith(":") and len(v) >= 3:
+                    t = "emote"
+                    v = v[1:-1]
                 
                 tokens.append(dict(t=t, v=v))
                 

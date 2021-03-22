@@ -142,6 +142,8 @@ class Message(Repr):
         for token in self.tokens:
             if token["t"] == "mention":
                 content.append(f"@{token['v']}")
+            elif token["t"] == "emote":
+                content.append(f":{token['v']}:")
             else:
                 content.append(token["v"])
         
