@@ -180,7 +180,6 @@ class DogeClient(Repr):
                 elif op == "new_user_join_room":
                     await execute_listener("on_user_join", User.from_dict(res["d"]["user"]))
                 elif op == "user_left_room":
-                    await self.get_top_public_rooms()
                     await execute_listener("on_user_leave", res["d"]["userId"])
                 elif op == "new_chat_msg":
                     msg = Message.from_dict(res["d"]["msg"])
