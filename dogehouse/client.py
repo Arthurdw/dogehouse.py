@@ -116,7 +116,7 @@ class DogeClient(Repr):
             raw_data["fetchId"] = fetch_id
         await self.__socket.send(dumps(raw_data))
 
-    async def __main(self, loop: asyncio.ProactorEventLoop):
+    async def __main(self, loop):
         """This instance handles the websocket connections."""
         async def event_loop():            
             async def execute_listener(listener: str, *args):
