@@ -56,7 +56,7 @@ def event(func: Awaitable):
     return func
 
 
-def command(func: Awaitable):
+def command(name: str = None):
     """
     Create a new command for dogehouse.
 
@@ -69,8 +69,10 @@ def command(func: Awaitable):
         if __name__ == "__main__":
             Client("token", "refresh_token").run()
     """
-    commands[func.__name__.lower()] = [func, False]
-    return func
+    def wrapper(func: Awaitable):
+        commands[(name if name else func.__name__).lower()] = [func, False]
+        return func
+    return wrapper
     
 
 
