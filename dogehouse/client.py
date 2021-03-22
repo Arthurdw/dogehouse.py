@@ -169,6 +169,7 @@ class DogeClient(Repr):
                         if fetch == "get_top_public_rooms":
                             info("Dogehouse: Received new rooms")
                             self.rooms = list(map(Room.from_dict, res["d"]["rooms"]))
+                            await execute_listener("on_rooms_fetch")
                         elif fetch == "create_room":
                             info("Dogehouse: Created new room")
                             self.room = Room.from_dict(res["d"]["room"])
