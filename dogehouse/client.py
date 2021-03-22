@@ -27,7 +27,7 @@ from uuid import uuid4
 from json import loads, dumps
 from inspect import signature
 from logging import info, debug
-from typing import Awaitable, List
+from typing import Awaitable, List, Union
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
@@ -77,7 +77,7 @@ def command(func: Awaitable):
 class DogeClient(Repr):
     """Represents your Dogehouse client."""
 
-    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False, prefix: str = "!"):
+    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False, prefix: Union[str, List[str]] = "!"):
         """
         Initialize your Dogehouse client
 
@@ -87,6 +87,7 @@ class DogeClient(Repr):
             room (int, optional): The room your client should join. Defaults to None.
             muted (bool, optional): Wether or not the client should be muted. Defaults to False.
             reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
+            prefix (List of strings or a string): The bot prefix.
         """
         self.user = None
         self.room = room
@@ -186,9 +187,22 @@ class DogeClient(Repr):
                     msg = Message.from_dict(res["d"]["msg"])
                     await execute_listener("on_message", msg)
                     try:
-                        if msg.content.startswith(self.prefix) and len(msg.content) > len(self.prefix) + 1:
-                            splitted = msg.content[len(self.prefix)::].split(" ")
-                            await execute_command(splitted[0], msg, *splitted[1::])
+                        async def handle_command(prefix: str):
+                            if msg.content.startswith(prefix) and len(msg.content) > len(prefix) + 1:
+                                splitted = msg.content[len(prefix)::].split(" ")
+                                await execute_command(splitted[0], msg, *splitted[1::])
+                                return True
+                            return False
+                            
+                        prefixes = []
+                        if isinstance(self.prefix, str):
+                            prefixes.append(self.prefix)
+                        else:
+                            prefixes = self.prefix
+                        
+                        for prefix in prefixes:
+                            if await handle_command(prefix):
+                                break                            
                     except Exception as e:
                         await execute_listener("on_error", e)
 
