@@ -27,8 +27,18 @@ from uuid import uuid4
 from json import loads, dumps
 from inspect import signature
 from logging import info, debug
-from typing import Awaitable, List, Union
+from typing import Awaitable, List, Union, Optional
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+from pymediasoup import Device, AiortcHandler
+from pymediasoup.transport import Transport
+from pymediasoup.consumer import Consumer
+from pymediasoup.producer import Producer
+from pymediasoup.data_consumer import DataConsumer
+from pymediasoup.data_producer import DataProducer
+from pymediasoup.sctp_parameters import SctpStreamParameters
+
+from aiortc.mediastreams import AudioStreamTrack
+from aiortc.contrib.media import MediaPlayer
 
 from .utils import Repr
 from .entities import User, Room, UserPreview, Message
@@ -73,7 +83,6 @@ def command(name: str = None):
         commands[(name if name else func.__name__).lower()] = [func, False]
         return func
     return wrapper
-    
 
 
 class DogeClient(Repr):
@@ -105,6 +114,16 @@ class DogeClient(Repr):
         self.__listeners = listeners
         self.__fetches = {}
         self.__commands = commands
+        self.__tracks = [MediaPlayer(
+            "C:\\Users\\arthu\\Downloads\\tetris.mp3").audio]
+        self.__sendTransport: Optional[Transport] = None
+        self.__recvTransport: Optional[Transport] = None
+        self.__producers = []
+        self.__consumers = []
+        self.__tasks = []
+        self.__rtpCapabilities = {}
+        self.__sendTransportOptions = {}
+        self.__device = Device(AiortcHandler.createFactory(self.__tracks))
 
     async def __fetch(self, op: str, data: dict):
         fetch = str(uuid4())
@@ -121,13 +140,13 @@ class DogeClient(Repr):
 
     async def __main(self, loop):
         """This instance handles the websocket connections."""
-        async def event_loop():            
+        async def event_loop():
             async def execute_listener(listener: str, *args):
                 listener = self.__listeners.get(listener.lower())
                 if listener:
                     asyncio.ensure_future(listener[0](*args) if listener[1] else
                                           listener[0](self, *args))
-                    
+
             async def execute_command(command_name: str, ctx: Message, *args):
                 command = self.__commands.get(command_name.lower())
                 if command:
@@ -137,7 +156,7 @@ class DogeClient(Repr):
                     if not command[1]:
                         arguments.append(self)
                         parameters.pop(0)
-                    
+
                     if parameters:
                         arguments.append(ctx)
                         parameters.pop(0)
@@ -149,9 +168,11 @@ class DogeClient(Repr):
                     try:
                         asyncio.ensure_future(command[0](*arguments, **params))
                     except TypeError:
-                        raise NotEnoughArguments(f"Not enough arguments were provided in command `{command_name}`.")
+                        raise NotEnoughArguments(
+                            f"Not enough arguments were provided in command `{command_name}`.")
                 else:
-                    raise CommandNotFound(f"The requested command `{command_name}` does not exist.")
+                    raise CommandNotFound(
+                        f"The requested command `{command_name}` does not exist.")
 
             info("Dogehouse: Starting event listener loop")
             while self.__active:
@@ -171,12 +192,15 @@ class DogeClient(Repr):
                         del self.__fetches[res.get("fetchId")]
                         if fetch == "get_top_public_rooms":
                             info("Dogehouse: Received new rooms")
-                            self.rooms = list(map(Room.from_dict, res["d"]["rooms"]))
+                            self.rooms = list(
+                                map(Room.from_dict, res["d"]["rooms"]))
                             await execute_listener("on_rooms_fetch")
                         elif fetch == "create_room":
                             info("Dogehouse: Created new room")
                             self.room = Room.from_dict(res["d"]["room"])
                 elif op == "you-joined-as-speaker":
+                    self.__rtpCapabilities = res["d"]["routerRtpCapabilities"]
+                    self.__sendTransportOptions = res["d"]["sendTransportOptions"]
                     await execute_listener("on_room_join", True)
                 elif op == "join_room_done":
                     self.room = Room.from_dict(res["d"]["room"])
@@ -191,20 +215,21 @@ class DogeClient(Repr):
                     try:
                         async def handle_command(prefix: str):
                             if msg.content.startswith(prefix) and len(msg.content) > len(prefix) + 1:
-                                splitted = msg.content[len(prefix)::].split(" ")
+                                splitted = msg.content[len(
+                                    prefix)::].split(" ")
                                 await execute_command(splitted[0], msg, *splitted[1::])
                                 return True
                             return False
-                            
+
                         prefixes = []
                         if isinstance(self.prefix, str):
                             prefixes.append(self.prefix)
                         else:
                             prefixes = self.prefix
-                        
+
                         for prefix in prefixes:
                             if await handle_command(prefix):
-                                break                            
+                                break
                     except Exception as e:
                         await execute_listener("on_error", e)
 
@@ -267,7 +292,7 @@ class DogeClient(Repr):
             raise NoConnectionException()
 
         self.__active = False
-        
+
     def listener(self, name: str = None):
         """
         Create an event listener for dogehouse.
@@ -295,11 +320,12 @@ class DogeClient(Repr):
             client.run()
         """
         def decorator(func: Awaitable):
-            self.__listeners[(name if name else func.__name__).lower()] = [func, True]
+            self.__listeners[(name if name else func.__name__).lower()] = [
+                func, True]
             return func
 
         return decorator
-        
+
     def command(self, name: str = None):
         """
         Create an command for dogehouse.
@@ -327,7 +353,8 @@ class DogeClient(Repr):
             client.run()
         """
         def decorator(func: Awaitable):
-            self.__commands[(name if name else func.__name__).lower()] = [func, True]
+            self.__commands[(name if name else func.__name__).lower()] = [
+                func, True]
             return func
 
         return decorator
@@ -342,8 +369,8 @@ class DogeClient(Repr):
             cursor (int, optional): [description]. Defaults to 0.
         """
         await self.__fetch("get_top_public_rooms", dict(cursor=cursor))
-        
-    async def create_room(self, name: str, description: str = "", *, public = True) -> None:
+
+    async def create_room(self, name: str, description: str = "", *, public=True) -> None:
         """
         Creates a room, when the room is created a request will be sent to join the room.
         When the client joins the room the `on_room_join` event will be triggered.
@@ -355,8 +382,9 @@ class DogeClient(Repr):
         """
         if 2 <= len(name) <= 60:
             return await self.__fetch("create_room", dict(name=name, description=description, privacy="public" if public else "private"))
-        
-        raise InvalidSize("The `name` property length should be 2-60 characters long.")
+
+        raise InvalidSize(
+            "The `name` property length should be 2-60 characters long.")
 
     async def join_room(self, id: str) -> None:
         """
@@ -366,7 +394,7 @@ class DogeClient(Repr):
             id (str): The ID of the room you want to join.
         """
         await self.__send("join_room", dict(roomId=id))
-        
+
     async def send(self, message: str, *, whisper: List[str] = []) -> None:
         """
         Send a message to the current room.
@@ -374,13 +402,13 @@ class DogeClient(Repr):
         Args:
             message (str): The message that should be sent.
             whisper (List[str], optional): A collection of user id's who should only see the message. Defaults to [].
-        
+
         Raises:
             NoConnectionException: Gets thrown when the client hasn't joined a room yet.
         """
         if not self.room:
             raise NoConnectionException("No room has been joined yet!")
-        
+
         def parse_message():
             tokens = []
             for token in message.split(" "):
@@ -393,9 +421,36 @@ class DogeClient(Repr):
                 elif v.startswith(":") and v.endswith(":") and len(v) >= 3:
                     t = "emote"
                     v = v[1:-1]
-                
+
                 tokens.append(dict(t=t, v=v))
-                
+
             return tokens
-        
+
         await self.__send("send_room_chat_msg", dict(whisperedTo=whisper, tokens=parse_message()))
+
+    async def ask_to_speak(self):
+        await self.__send("ask_to_speak", {})
+
+    
+    async def __createRecvTransport(self):
+        if self.__recvTransport != None:
+            return 
+        
+        self.__recvTransport = self.__device.createRecvTransport(
+            id=self.__sendTransportOptions["id"],
+            iceParameters=self.__sendTransportOptions["iceParameters"],
+            iceCandidates=self.__sendTransportOptions["iceCandidates"],
+            dtlsParameters=self.__sendTransportOptions["dtlsParameters"],
+            sctpParameters=self.__device.sctpCapabilities.dict()
+        )
+        
+        reqId = uuid4()
+        
+
+    async def __consume(self, id, producerId, kind, rtpParameters):
+        if self.__recvTransport == None:
+            await self.__createRecvTransport()
+
+        consumer = await self.__recvTransport.consume(
+            id=id, producerId=producerId, kind=kind, rtpParameters=rtpParameters)
+        self.__consumers.append(consumer)
