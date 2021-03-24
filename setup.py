@@ -2,6 +2,8 @@ from distutils.core import setup
 from os import path
 # from dogehouse.config import __version__
 
+__version__ = "0.5.5"
+
 this_dir = path.abspath(path.dirname(__file__))
 
 with open(path.join(this_dir, "README.rst"), encoding='utf-8') as f:
@@ -10,7 +12,7 @@ with open(path.join(this_dir, "README.rst"), encoding='utf-8') as f:
 setup(
     name='dogehouse',
     packages=["dogehouse", "dogehouse.utils"],
-    version="0.5.4",
+    version=__version__,
     license='MIT',
     description='A Python wrapper for the Dogehouse API.',
     project_urls={
