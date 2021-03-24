@@ -189,11 +189,11 @@ class DogeClient(Repr):
                     await execute_listener("on_user_leave", res["d"]["userId"])
                 elif op == "new_chat_msg":
                     msg = Message.from_dict(res["d"]["msg"])
+                    await execute_listener("on_message", msg)
                     
                     if msg.author.id == self.user.id:
                         return
                     
-                    await execute_listener("on_message", msg)
                     try:
                         async def handle_command(prefix: str):
                             if msg.content.startswith(prefix) and len(msg.content) > len(prefix) + 1:
