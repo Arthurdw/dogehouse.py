@@ -1,8 +1,17 @@
 from distutils.core import setup
 from os import path
-# from dogehouse.config import __version__
+import re
 
-__version__ = "0.5.5"
+__version__ = ""
+with open('dogehouse/config.py') as f:
+    __version__ = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+
+if not __version__:
+    raise RuntimeError('version is not set')
+
+requirements = []
+with open('requirements.txt') as f:
+  requirements = f.read().splitlines()
 
 this_dir = path.abspath(path.dirname(__file__))
 
@@ -24,7 +33,7 @@ setup(
     url='https://github.com/Arthurdw/dogehouse.py',
     download_url=f'https://github.com/Arthurdw/dogehouse.py/archive/{__version__}.tar.gz',
     keywords=["dogehouse"],
-    install_requires=['websockets', 'python-dateutil'],
+    install_requires=requirements,
     classifiers=[
         # Development statuses:
         # 'Development Status :: 1 - Planning',
