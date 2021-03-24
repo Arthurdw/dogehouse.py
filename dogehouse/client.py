@@ -73,7 +73,6 @@ def command(name: str = None):
         commands[(name if name else func.__name__).lower()] = [func, False]
         return func
     return wrapper
-    
 
 
 class DogeClient(Repr):
@@ -121,13 +120,13 @@ class DogeClient(Repr):
 
     async def __main(self, loop):
         """This instance handles the websocket connections."""
-        async def event_loop():            
+        async def event_loop():
             async def execute_listener(listener: str, *args):
                 listener = self.__listeners.get(listener.lower())
                 if listener:
                     asyncio.ensure_future(listener[0](*args) if listener[1] else
                                           listener[0](self, *args))
-                    
+
             async def execute_command(command_name: str, ctx: Message, *args):
                 command = self.__commands.get(command_name.lower())
                 if command:
@@ -137,7 +136,7 @@ class DogeClient(Repr):
                     if not command[1]:
                         arguments.append(self)
                         parameters.pop(0)
-                    
+
                     if parameters:
                         arguments.append(ctx)
                         parameters.pop(0)
@@ -149,9 +148,11 @@ class DogeClient(Repr):
                     try:
                         asyncio.ensure_future(command[0](*arguments, **params))
                     except TypeError:
-                        raise NotEnoughArguments(f"Not enough arguments were provided in command `{command_name}`.")
+                        raise NotEnoughArguments(
+                            f"Not enough arguments were provided in command `{command_name}`.")
                 else:
-                    raise CommandNotFound(f"The requested command `{command_name}` does not exist.")
+                    raise CommandNotFound(
+                        f"The requested command `{command_name}` does not exist.")
 
             info("Dogehouse: Starting event listener loop")
             while self.__active:
@@ -171,7 +172,8 @@ class DogeClient(Repr):
                         del self.__fetches[res.get("fetchId")]
                         if fetch == "get_top_public_rooms":
                             info("Dogehouse: Received new rooms")
-                            self.rooms = list(map(Room.from_dict, res["d"]["rooms"]))
+                            self.rooms = list(
+                                map(Room.from_dict, res["d"]["rooms"]))
                             await execute_listener("on_rooms_fetch")
                         elif fetch == "create_room":
                             info("Dogehouse: Created new room")
@@ -191,22 +193,31 @@ class DogeClient(Repr):
                     try:
                         async def handle_command(prefix: str):
                             if msg.content.startswith(prefix) and len(msg.content) > len(prefix) + 1:
-                                splitted = msg.content[len(prefix)::].split(" ")
+                                splitted = msg.content[len(
+                                    prefix)::].split(" ")
                                 await execute_command(splitted[0], msg, *splitted[1::])
                                 return True
                             return False
-                            
+
                         prefixes = []
                         if isinstance(self.prefix, str):
                             prefixes.append(self.prefix)
                         else:
                             prefixes = self.prefix
-                        
+
                         for prefix in prefixes:
                             if await handle_command(prefix):
-                                break                            
+                                break
                     except Exception as e:
                         await execute_listener("on_error", e)
+                elif op == "message_deleted":
+                    await execute_listener("on_message_delete", res["d"]["deleterId"], res["d"]["messageId"])
+                elif op == "speaker_removed":
+                    await execute_listener("on_speaker_delete", res["d"]["userId"], res["d"]["roomId"], res["d"]["muteMap"], res["d"]["raiseHandMap"])
+                elif op == "chat_user_banned":
+                    await execute_listener("on_user_ban", res["d"]["userId"])
+                elif op == "hand_raised":
+                    await execute_listener("on_speaker_request", res["d"]["userId"], res["d"]["roomId"])
 
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")
@@ -267,7 +278,7 @@ class DogeClient(Repr):
             raise NoConnectionException()
 
         self.__active = False
-        
+
     def listener(self, name: str = None):
         """
         Create an event listener for dogehouse.
@@ -295,11 +306,12 @@ class DogeClient(Repr):
             client.run()
         """
         def decorator(func: Awaitable):
-            self.__listeners[(name if name else func.__name__).lower()] = [func, True]
+            self.__listeners[(name if name else func.__name__).lower()] = [
+                func, True]
             return func
 
         return decorator
-        
+
     def command(self, name: str = None):
         """
         Create an command for dogehouse.
@@ -327,7 +339,8 @@ class DogeClient(Repr):
             client.run()
         """
         def decorator(func: Awaitable):
-            self.__commands[(name if name else func.__name__).lower()] = [func, True]
+            self.__commands[(name if name else func.__name__).lower()] = [
+                func, True]
             return func
 
         return decorator
@@ -342,8 +355,8 @@ class DogeClient(Repr):
             cursor (int, optional): [description]. Defaults to 0.
         """
         await self.__fetch("get_top_public_rooms", dict(cursor=cursor))
-        
-    async def create_room(self, name: str, description: str = "", *, public = True) -> None:
+
+    async def create_room(self, name: str, description: str = "", *, public=True) -> None:
         """
         Creates a room, when the room is created a request will be sent to join the room.
         When the client joins the room the `on_room_join` event will be triggered.
@@ -355,8 +368,9 @@ class DogeClient(Repr):
         """
         if 2 <= len(name) <= 60:
             return await self.__fetch("create_room", dict(name=name, description=description, privacy="public" if public else "private"))
-        
-        raise InvalidSize("The `name` property length should be 2-60 characters long.")
+
+        raise InvalidSize(
+            "The `name` property length should be 2-60 characters long.")
 
     async def join_room(self, id: str) -> None:
         """
@@ -366,7 +380,7 @@ class DogeClient(Repr):
             id (str): The ID of the room you want to join.
         """
         await self.__send("join_room", dict(roomId=id))
-        
+
     async def send(self, message: str, *, whisper: List[str] = []) -> None:
         """
         Send a message to the current room.
@@ -374,13 +388,13 @@ class DogeClient(Repr):
         Args:
             message (str): The message that should be sent.
             whisper (List[str], optional): A collection of user id's who should only see the message. Defaults to [].
-        
+
         Raises:
             NoConnectionException: Gets thrown when the client hasn't joined a room yet.
         """
         if not self.room:
             raise NoConnectionException("No room has been joined yet!")
-        
+
         def parse_message():
             tokens = []
             for token in message.split(" "):
@@ -393,13 +407,13 @@ class DogeClient(Repr):
                 elif v.startswith(":") and v.endswith(":") and len(v) >= 3:
                     t = "emote"
                     v = v[1:-1]
-                
+
                 tokens.append(dict(t=t, v=v))
-                
+
             return tokens
-        
+
         await self.__send("send_room_chat_msg", dict(whisperedTo=whisper, tokens=parse_message()))
-        
+
     async def ask_to_speak(self):
         """
         Request in the current room to speak.
@@ -419,7 +433,7 @@ class DogeClient(Repr):
             user (Union[User, BaseUser, UserPreview]): The user which should be promoted to room moderator.
         """
         await self.__send("change_mod_status", dict(userId=user.id, value=True))
-        
+
     async def unmod(self, user: Union[User, BaseUser, UserPreview]):
         """
         Remove a user their room moderator permissions.
@@ -449,7 +463,7 @@ class DogeClient(Repr):
         if not user:
             user = self.user
         await self.__send("set_listener", dict(userId=user.id))
-        
+
     async def ban_chat(self, user: Union[User, BaseUser, UserPreview]):
         """
         Ban a user from speaking in the room.
@@ -486,3 +500,13 @@ class DogeClient(Repr):
             user (Union[User, BaseUser, UserPreview]): The user who will has to be accepted.
         """
         await self.__send("add_speaker", dict(userId=user.id))
+
+    async def delete_message(self, id: str, user_id: str):
+        """
+        Deletes a message that has been sent by a user.
+
+        Args:
+            id (str): The id of the message that should be removed.
+            user_id (str): The author of that message.
+        """
+        await self.__send("delete_room_chat_message", dict(messageId=id, userId=user_id))
