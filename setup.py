@@ -4,20 +4,17 @@ import re
 
 __version__ = ""
 with open('dogehouse/config.py') as f:
-    __version__ = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+    __version__ = re.search(
+        r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
 
 if not __version__:
-    raise RuntimeError('version is not set')
-
-requirements = []
-with open('requirements.txt') as f:
-  requirements = f.read().splitlines()
+    raise RuntimeError('version is not set') =
 
 this_dir = path.abspath(path.dirname(__file__))
 
 with open(path.join(this_dir, "README.rst"), encoding='utf-8') as f:
     long_description = f.read()
-    
+
 setup(
     name='dogehouse',
     packages=["dogehouse", "dogehouse.utils"],
@@ -33,7 +30,9 @@ setup(
     url='https://github.com/Arthurdw/dogehouse.py',
     download_url=f'https://github.com/Arthurdw/dogehouse.py/archive/{__version__}.tar.gz',
     keywords=["dogehouse"],
-    install_requires=requirements,
+    install_requires=[
+        "websockets",
+        "python-dateutil"],
     classifiers=[
         # Development statuses:
         # 'Development Status :: 1 - Planning',
