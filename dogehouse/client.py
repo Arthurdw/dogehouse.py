@@ -399,3 +399,14 @@ class DogeClient(Repr):
             return tokens
         
         await self.__send("send_room_chat_msg", dict(whisperedTo=whisper, tokens=parse_message()))
+        
+    async def ask_to_speak(self):
+        """
+        Request in the current room to speak.
+
+        Raises:
+            NoConnectionException: Gets raised when no room has been joined yet.   
+        """
+        if not self.room:
+            raise NoConnectionException("No room has been joined yet.")
+        await self.__send("ask_to_speak", {})
