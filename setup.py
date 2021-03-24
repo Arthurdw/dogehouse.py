@@ -8,7 +8,7 @@ with open('dogehouse/config.py') as f:
         r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
 
 if not __version__:
-    raise RuntimeError('version is not set') =
+    raise RuntimeError('version is not set')
 
 this_dir = path.abspath(path.dirname(__file__))
 
