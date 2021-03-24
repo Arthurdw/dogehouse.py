@@ -31,7 +31,7 @@ from typing import Awaitable, List, Union
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
-from .entities import User, Room, UserPreview, Message
+from .entities import User, Room, UserPreview, Message, BaseUser
 from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
 from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound
 
@@ -410,3 +410,79 @@ class DogeClient(Repr):
         if not self.room:
             raise NoConnectionException("No room has been joined yet.")
         await self.__send("ask_to_speak", {})
+
+    async def make_mod(self, user: Union[User, BaseUser, UserPreview]):
+        """
+        Make a user in the room moderator.
+
+        Args:
+            user (Union[User, BaseUser, UserPreview]): The user which should be promoted to room moderator.
+        """
+        await self.__send("change_mod_status", dict(userId=user.id, value=True))
+        
+    async def unmod(self, user: Union[User, BaseUser, UserPreview]):
+        """
+        Remove a user their room moderator permissions.
+
+        Args:
+            user (Union[User, BaseUser, UserPreview]): The user from which his permissions should be taken.
+        """
+        await self.__send("change_mod_status", dict(userId=user.id, value=False))
+
+    async def make_admin(self, user: Union[User, BaseUser, UserPreview]):
+        """
+        Make a user the room administrator/owner.
+        NOTE: This action is irreversable.
+
+        Args:
+            user (Union[User, BaseUser, UserPreview]): The user which should be promoted to room admin.
+        """
+        await self.__send("change_room_creator", dict(userId=user.id))
+
+    async def set_listener(self, user: Union[User, BaseUser, UserPreview] = None):
+        """
+        Force a user to be a listener.
+
+        Args:
+            user (Union[User, BaseUser, UserPreview], optional): The user which should become a Listener. Defaults to the client.
+        """
+        if not user:
+            user = self.user
+        await self.__send("set_listener", dict(userId=user.id))
+        
+    async def ban_chat(self, user: Union[User, BaseUser, UserPreview]):
+        """
+        Ban a user from speaking in the room.
+        NOTE: This action can not be undone.
+
+        Args:
+            user (Union[User, BaseUser, UserPreview]): The user from which their chat permissions should be taken.
+        """
+        await self.__send("ban_from_room_chat", dict(userId=user.id))
+
+    async def ban(self, user: Union[User, BaseUser, UserPreview]):
+        """
+        Bans a user from a room.
+
+        Args:
+            user (Union[User, BaseUser, UserPreview]): The user who should be banned.
+        """
+        await self.__send("block_from_room", dict(userId=user.id))
+
+    async def unban(self, user: Union[User, BaseUser, UserPreview]):
+        """
+        Unban a user from the room.
+
+        Args:
+            user (Union[User, BaseUser, UserPreview]): The user who should be unbanned.
+        """
+        await self.__send("unban_from_room", dict(userId=user.id), fetch_id=uuid4())
+
+    async def add_speaker(self, user: Union[User, BaseUser, UserPreview]):
+        """
+        Accept a speaker request from a user.
+
+        Args:
+            user (Union[User, BaseUser, UserPreview]): The user who will has to be accepted.
+        """
+        await self.__send("add_speaker", dict(userId=user.id))
