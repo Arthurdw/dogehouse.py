@@ -22,7 +22,7 @@ setup(
     url='https://github.com/Arthurdw/dogehouse.py',
     download_url=f'https://github.com/Arthurdw/dogehouse.py/archive/{__version__}.tar.gz',
     keywords=["dogehouse"],
-    install_requires=['websockets', 'python-dateutil'],
+    setup_requires=['websockets', 'python-dateutil'],
     classifiers=[
         # Development statuses:
         # 'Development Status :: 1 - Planning',
