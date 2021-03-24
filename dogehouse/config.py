@@ -21,6 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Semantic Version
+__version__ = "0.5.2"
 
 # The socket url for the dogehouse API
 apiUrl ="wss://api.dogehouse.tv/socket"

@@ -1,6 +1,6 @@
 from distutils.core import setup
 from os import path
-from dogehouse import __version__
+from dogehouse.config import __version__
 
 this_dir = path.abspath(path.dirname(__file__))
 
@@ -22,7 +22,6 @@ setup(
     url='https://github.com/Arthurdw/dogehouse.py',
     download_url=f'https://github.com/Arthurdw/dogehouse.py/archive/{__version__}.tar.gz',
     keywords=["dogehouse"],
-    setup_requires=['websockets', 'python-dateutil'],
     install_requires=['websockets', 'python-dateutil'],
     classifiers=[
         # Development statuses:

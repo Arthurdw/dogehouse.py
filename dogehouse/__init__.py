@@ -21,7 +21,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Semantic Version
-__version__ = "0.5.2"
-
 from .client import DogeClient, event, command
+from .config import __version__
