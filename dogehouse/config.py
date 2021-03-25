@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 # Semantic Version
-__version__ = "0.5.8"
+__version__ = "0.5.9"
 
 # The socket url for the dogehouse API
 apiUrl ="wss://api.dogehouse.tv/socket"
