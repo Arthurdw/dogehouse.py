@@ -29,3 +29,12 @@ Example
         
     if __name__ == "__main__":
         Client("YourToken", "YourRefreshToken", prefix="!").run()
+
+
+
+Tokens
+--------
+- Go to https://dogehouse.tv
+- Open Developer options (F12 or Ctrl+Shift+I)
+- Go to Application > Local Storage > dogehouse.tv
+- There lies your TOKEN and REFRESH_TOKEN
