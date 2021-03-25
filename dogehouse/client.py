@@ -56,7 +56,7 @@ def event(func: Awaitable):
     return func
 
 
-def command(name: str = None):
+def command(func: Awaitable = None, *, name: str = None):
     """
     Create a new command for dogehouse.
 
@@ -72,7 +72,7 @@ def command(name: str = None):
     def wrapper(func: Awaitable):
         commands[(name if name else func.__name__).lower()] = [func, False]
         return func
-    return wrapper
+    return wrapper(func) if func else wrapper
 
 
 class DogeClient(Repr):
@@ -192,7 +192,7 @@ class DogeClient(Repr):
                     await execute_listener("on_message", msg)
                     
                     if msg.author.id == self.user.id:
-                        return
+                        continue
                     
                     try:
                         async def handle_command(prefix: str):
