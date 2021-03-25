@@ -35,7 +35,7 @@ class Client(DogeClient):
     async def on_user_join(self, user: User):
         await self.send(f"Welcome {user.mention}")
         
-    @command
+    @command(name="say")
     async def say(self, ctx: Message, *, message):
         await self.send(message)
             
