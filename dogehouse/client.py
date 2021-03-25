@@ -25,7 +25,7 @@ import asyncio
 import websockets
 from uuid import uuid4
 from json import loads, dumps
-from inspect import signature
+from inspect import signature, Parameter
 from logging import info, debug
 from typing import Awaitable, List, Union
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
@@ -141,9 +141,14 @@ class DogeClient(Repr):
                         arguments.append(ctx)
                         parameters.pop(0)
                         for idx, (key, param) in enumerate(parameters):
-                            value = args[idx]
-                            if param.kind == param.KEYWORD_ONLY:
-                                value = " ".join(args[idx::])
+                            if idx + 1 > len(args) and param.default != Parameter.empty:
+                                value = param.default
+                            else:
+                                value = args[idx]
+                                
+                                if param.kind == param.KEYWORD_ONLY:
+                                    value = " ".join(args[idx::])
+                            
                             params[key] = value
                     try:
                         asyncio.ensure_future(command[0](*arguments, **params))
