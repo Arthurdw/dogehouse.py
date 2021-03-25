@@ -25,9 +25,9 @@ import asyncio
 import websockets
 from uuid import uuid4
 from json import loads, dumps
-from inspect import signature, Parameter
 from logging import info, debug
-from typing import Awaitable, List, Union
+from inspect import signature, Parameter
+from typing import Awaitable, List, Union, Tuple, Any
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
@@ -104,6 +104,8 @@ class DogeClient(Repr):
         self.__listeners = listeners
         self.__fetches = {}
         self.__commands = commands
+        self.__waiting_for = {}
+        self.__waiting_for_fetches = {}
 
     async def __fetch(self, op: str, data: dict):
         fetch = str(uuid4())
@@ -122,10 +124,14 @@ class DogeClient(Repr):
         """This instance handles the websocket connections."""
         async def event_loop():
             async def execute_listener(listener: str, *args):
-                listener = self.__listeners.get(listener.lower())
+                listener_name = listener.lower()
+                listener = self.__listeners.get(listener_name)
                 if listener:
-                    asyncio.ensure_future(listener[0](*args) if listener[1] else
-                                          listener[0](self, *args))
+                    asyncio.ensure_future(listener[0](*(args if listener[1] else [self, *args])))
+                    
+                    if listener_name[3::] in self.__waiting_for:    
+                        for fetch_id in self.__waiting_for[listener_name[3::]]:
+                            self.__waiting_for_fetches[fetch_id] = [*args]
 
             async def execute_command(command_name: str, ctx: Message, *args):
                 command = self.__commands.get(command_name.lower())
@@ -518,3 +524,40 @@ class DogeClient(Repr):
             user_id (str): The author of that message.
         """
         await self.__send("delete_room_chat_message", dict(messageId=id, userId=user_id))
+
+    async def wait_for(self, event: str, *, timeout: float = 60.0, check: callable = None, tick: float = 0.5) -> Union[Any, Tuple[Any]]:
+        """
+        Manually wait for an event.
+
+        Args:
+            event (str): The `on_...` event that should be waited for. (without the `on_` part)
+            timeout (float, optional): How long the client will wait for a response.. Defaults to 60.0.
+            check (callable, optional): A check which will be checked for the reponse. Defaults to None.
+            tick (float, optional): The tickrate for the fetch check iteration. Defaults to 0.5.
+
+        Raises:
+            asyncio.TimeoutError: Gets thrown when the timeout has been reached.
+
+        Returns:
+            Union[Any, Tuple[Any]]: The parameter(s) of the event.
+        """
+        passed = 0
+        
+        fetch_id = str(uuid4())
+        self.__waiting_for[event] = [*self.__waiting_for[event], fetch_id] if event in self.__waiting_for else [fetch_id]
+        
+        while True:
+            await asyncio.sleep(tick)
+            passed += tick
+            
+            if passed > timeout:
+                self.__waiting_for[event].remove(fetch_id)
+                raise asyncio.TimeoutError(f"wait_for event timed out (for `{event}`)")
+            elif fetch_id in self.__waiting_for_fetches:
+                data = self.__waiting_for_fetches[fetch_id]
+                
+                if check is not None:
+                    if not check(*data):
+                        continue
+                return (*data,) if len(data) > 1 else data[0]
+            
