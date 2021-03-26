@@ -90,10 +90,10 @@ class DogeClient(Repr):
             reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
             prefix (List of strings or a string): The bot prefix.
         """
-        self.user = None
-        self.room = room
-        self.rooms = []
-        self.prefix = prefix
+        self.user: User = None
+        self.room: Room = room
+        self.rooms: List[Room] = []
+        self.prefix: List[str] = prefix
 
         self.__token = token
         self.__refresh_token = refresh_token
@@ -183,8 +183,7 @@ class DogeClient(Repr):
                         del self.__fetches[res.get("fetchId")]
                         if fetch == "get_top_public_rooms":
                             info("Dogehouse: Received new rooms")
-                            self.rooms = list(
-                                map(Room.from_dict, res["d"]["rooms"]))
+                            self.rooms = list(map(Room.from_dict, res["d"]["rooms"]))
                             await execute_listener("on_rooms_fetch")
                         elif fetch == "create_room":
                             info("Dogehouse: Created new room")
@@ -195,9 +194,13 @@ class DogeClient(Repr):
                     self.room = Room.from_dict(res["d"]["room"])
                     await execute_listener("on_room_join", False)
                 elif op == "new_user_join_room":
-                    await execute_listener("on_user_join", User.from_dict(res["d"]["user"]))
+                    user = User.from_dict(res["d"]["user"])
+                    self.room.users.append(user)
+                    await execute_listener("on_user_join", user)
                 elif op == "user_left_room":
-                    await execute_listener("on_user_leave", res["d"]["userId"])
+                    user = [user for user in self.room.users if user.id == res["d"]["userId"]][0]
+                    self.room.users.remove(user)
+                    await execute_listener("on_user_leave", user)
                 elif op == "new_chat_msg":
                     msg = Message.from_dict(res["d"]["msg"])
                     await execute_listener("on_message", msg)

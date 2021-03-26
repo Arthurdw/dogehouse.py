@@ -23,17 +23,18 @@
 
 from .utils import Repr
 
-from typing import List, Dict
+from datetime import datetime
 from dateutil.parser import isoparse
+from typing import List, Dict, List, Union
 
 
 class BaseUser(Repr):
     def __init__(self, id: str, username: str, displayname: str, avatar_url: str):
-        self.id = id
-        self.username = username
-        self.displayname = displayname
-        self.avatar_url = avatar_url
-        self.mention = f"@{username}"
+        self.id: str = id
+        self.username: str = username
+        self.displayname: str = displayname
+        self.avatar_url: str = avatar_url
+        self.mention: str = f"@{username}"
         
     def __str__(self):
         return self.username
@@ -55,8 +56,8 @@ class BaseUser(Repr):
 class User(BaseUser, Repr):
     def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str):
         super().__init__(id, username, displayname, avatar_url)
-        self.bio = bio
-        self.last_seen = isoparse(last_seen)
+        self.bio: str = bio
+        self.last_seen: datetime = isoparse(last_seen)
 
     def __str__(self):
         return self.username
@@ -77,9 +78,9 @@ class User(BaseUser, Repr):
 
 class UserPreview(Repr):
     def __init__(self, id: str, displayname: str, num_followers: int):
-        self.id = id
-        self.displayname = displayname
-        self.num_followers = num_followers
+        self.id: str = id
+        self.displayname: str = displayname
+        self.num_followers: int = num_followers
 
     def __str__(self):
         return self.displayname
@@ -100,14 +101,14 @@ class UserPreview(Repr):
 
 class Room(Repr):
     def __init__(self, id: str, creator_id: str, name: str, description: str, created_at: str, is_private: bool, count: int, users: List[UserPreview]):
-        self.id = id
-        self.creator_id = creator_id
-        self.name = name
-        self.description = description
-        self.created_at = isoparse(created_at)
-        self.is_private = is_private
-        self.count = count
-        self.users = users
+        self.id: str = id
+        self.creator_id: str = creator_id
+        self.name: str = name
+        self.description: str = description
+        self.created_at: datetime = isoparse(created_at)
+        self.is_private: bool = is_private
+        self.count: int = count
+        self.users: List[Union[User, UserPreview]] = users
 
     @staticmethod
     def from_dict(data: dict):
