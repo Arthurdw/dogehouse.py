@@ -162,3 +162,20 @@ class Message(Repr):
             Message: A parsed message object which contains the data from the dictionary.
         """
         return Message(data["id"], data["tokens"], data["isWhisper"], data["sentAt"], BaseUser.from_dict(data))
+
+
+class Client(Repr):
+    def __init__(self, user: User, room: Room, rooms: List[Room], prefix: List[str]):
+        self.user: User = None
+        self.room: Room = room
+        self.rooms: List[Room] = rooms
+        self.prefix: List[str] = prefix    
+
+
+class Context(Repr):
+    def __init__(self, client: Client, message: Message):
+        self.client: Client = client
+        self.bot: Client = self.client
+        self.message: Message = message
+        self.author: BaseUser = message.author
+        

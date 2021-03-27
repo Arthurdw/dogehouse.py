@@ -40,7 +40,9 @@ def represents(obj: object) -> str:
         str: A correct representation of the object inlcuding the object parameters.
     """
     def proccess(item: Any):
-        if isinstance(item, str) and len(item) > 20:
+        if issubclass(item.__class__, Represents):
+            item = repr(item)
+        elif isinstance(item, str) and len(item) > 20:
             item = item[0:17] + "..."
         return item
     

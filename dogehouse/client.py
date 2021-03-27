@@ -31,8 +31,8 @@ from typing import Awaitable, List, Union, Tuple, Any
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
-from .entities import User, Room, UserPreview, Message, BaseUser
 from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
+from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
 from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound
 
 listeners = {}
@@ -75,7 +75,7 @@ def command(func: Awaitable = None, *, name: str = None):
     return wrapper(func) if func else wrapper
 
 
-class DogeClient(Repr):
+class DogeClient(Client):
     """Represents your Dogehouse client."""
 
     def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False, prefix: Union[str, List[str]] = "!"):
@@ -90,10 +90,7 @@ class DogeClient(Repr):
             reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
             prefix (List of strings or a string): The bot prefix.
         """
-        self.user: User = None
-        self.room: Room = room
-        self.rooms: List[Room] = []
-        self.prefix: List[str] = prefix
+        super().__init__(None, room, [], prefix)
 
         self.__token = token
         self.__refresh_token = refresh_token
@@ -133,7 +130,7 @@ class DogeClient(Repr):
                         for fetch_id in self.__waiting_for[listener_name[3::]]:
                             self.__waiting_for_fetches[fetch_id] = [*args]
 
-            async def execute_command(command_name: str, ctx: Message, *args):
+            async def execute_command(command_name: str, ctx: Context, *args):
                 command = self.__commands.get(command_name.lower())
                 if command:
                     arguments = []
@@ -212,7 +209,7 @@ class DogeClient(Repr):
                         async def handle_command(prefix: str):
                             if msg.content.startswith(prefix) and len(msg.content) > len(prefix) + 1:
                                 splitted = msg.content[len(prefix)::].split(" ")
-                                await execute_command(splitted[0], msg, *splitted[1::])
+                                await execute_command(splitted[0], Context(self, msg), *splitted[1::])
                                 return True
                             return False
 
@@ -559,4 +556,5 @@ class DogeClient(Repr):
                     if not check(*data):
                         continue
                 return (*data,) if len(data) > 1 else data[0]
-            
+
+DogeBot = DogeClient            

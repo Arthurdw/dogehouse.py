@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 from dogehouse import DogeClient, event, command
-from dogehouse.entities import User, Message
+from dogehouse.entities import User
 
 
 class Client(DogeClient):
@@ -36,7 +36,7 @@ class Client(DogeClient):
         await self.send(f"Welcome {user.mention}")
         
     @command
-    async def say(self, ctx: Message, *, message):
+    async def say(self, _, *, message: str):
         await self.send(message)
             
 
