@@ -66,3 +66,7 @@ class CommandNotFound(DogehouseException):
 class MemberNotFound(DogehouseException):
     """The requested member was not found!"""
     pass
+
+class CommandAlreadyDefined(DogehouseException):
+    """The command has already been defined by another name or alias"""
+    pass 

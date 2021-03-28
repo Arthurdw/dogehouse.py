@@ -37,7 +37,7 @@ from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
 from .utils.convertors import Convertor
 from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
 from .utils.parsers import parse_sentence_to_tokens as parse_message, parse_word_to_token as parse_word
-from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound, MemberNotFound
+from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound, MemberNotFound, CommandAlreadyDefined
 
 listeners = {}
 commands = {}
@@ -60,9 +60,15 @@ def event(func: Awaitable):
     return func
 
 
-def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0):
+def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0, aliases: List[str] = None):
     """
-    Create a new command for dogehouse.
+    Create a new DogeClient command, which will be handled by the dogehouse python library.
+
+    Args:
+        func (Awaitable, optional): Your function (gets supplied automatically when you use the). Defaults to None.
+        name (str, optional): The call name for your command. Defaults to the function name.
+        cooldown (int, optional): The cooldown for the function usage per client. Defaults to 0.
+        aliases (List[str], optional): A list of aliases which should trigger your command. Defaults to None.
 
     Example:
         class Client(dogehouse.DogeClient):
@@ -74,7 +80,15 @@ def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0):
             Client("token", "refresh_token").run()
     """
     def wrapper(func: Awaitable):
-        commands[str(name if name else func.__name__).lower()] = [func, False, int(cooldown)]
+        def save(name: str):
+            if name in commands:
+                raise CommandAlreadyDefined(f"Command `{name}` has already been defined by a name or alias!")
+            commands[name] = [func, False, int(cooldown)]
+        
+        save(str(name if name else func.__name__).lower())
+        if aliases:
+            any(save(alias) for alias in aliases)
+        
         return func
     return wrapper(func) if func else wrapper
 
