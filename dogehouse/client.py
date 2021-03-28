@@ -198,19 +198,20 @@ class DogeClient(Client):
                             self.room = Room.from_dict(res["d"]["room"])
                             self.room.users = [self.user]
                         elif fetch == "get_user_profile":
+                            # TODO: USE THIS FOR GLOBAL CACHE
                             usr = User.from_dict(res["d"])
                             info(f"Dogehouse: Received user `{usr.id}`")
-                            self.room.users = [
-                                (user if user.id != usr.id else usr) for user in self.room.users]
+                            self.room.users = [(user if user.id != usr.id else usr) for user in self.room.users]
                             await execute_listener("on_user_fetch", usr)
                 elif op == "you-joined-as-speaker":
                     await execute_listener("on_room_join", True)
                 elif op == "join_room_done":
                     self.room = Room.from_dict(res["d"]["room"])
                     self.room.users.append(self.user)
-                    for user in self.room.users:
-                        if not isinstance(user, User):
-                            await self.__fetch("get_user_profile", dict(userId=user.id))
+                    await self.__send("get_current_room_users", {})
+                    # for user in self.room.users:
+                    #     if not isinstance(user, User):
+                    #         await self.__fetch("get_user_profile", dict(userId=user.id))
                     await execute_listener("on_room_join", False)
                 elif op == "new_user_join_room":
                     user = User.from_dict(res["d"]["user"])
@@ -255,6 +256,9 @@ class DogeClient(Client):
                     await execute_listener("on_user_ban", res["d"]["userId"])
                 elif op == "hand_raised":
                     await execute_listener("on_speaker_request", res["d"]["userId"], res["d"]["roomId"])
+                elif op == "get_current_room_users_done":
+                    self.room.users = list(map(User.from_dict, res["d"]["users"]))
+                    await execute_listener("on_room_users_fetch")
 
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")

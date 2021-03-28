@@ -59,19 +59,41 @@ class BaseUser(Convertor, Repr):
         return (await cls._get_user(ctx.client, param, argument)).to_base_user()
 
 
+class Permission(Repr):
+    def __init__(self, asked_to_speak: bool, is_mod: bool, is_admin: bool):
+        self.asked_to_speak: bool = asked_to_speak
+        self.is_mod: bool = is_mod
+        self.is_admin: bool = is_admin
+        
+    @staticmethod
+    def from_dict(data: dict):
+        """
+        Parses permissions from a dictionary.
+
+        Args:
+            data (dict): The parsed json websocket response.
+
+        Returns:
+            Permission: A parsed Permission object which contains the data from the dictionary.
+        """
+        if data:
+            return Permission(data.get("askedToSpeak"), data.get("isMod"), data.get("isAdmin"))
+        return Permission(False, False, False)
+
+
 class User(BaseUser, Repr):
     def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str, online: bool,
-                 following: bool, room_permissions, num_followers: int, num_following: int, follows_me: bool, current_room_id: str):
+                 following: bool, room_permissions: Permission, num_followers: int, num_following: int, follows_me: bool, current_room_id: str):
         super().__init__(id, username, displayname, avatar_url)
         self.bio: str = bio
         self.last_seen: datetime = isoparse(last_seen)
-        self.online = online
-        self.following = following
-        self.room_permissions = room_permissions
-        self.num_followers = num_followers
-        self.num_following = num_following
-        self.follows_me = follows_me
-        self.current_room_id = current_room_id
+        self.online: bool = online
+        self.following: bool = following
+        self.room_permissions: Permission = room_permissions
+        self.num_followers: int = num_followers
+        self.num_following: int = num_following
+        self.follows_me: bool = follows_me
+        self.current_room_id: str = current_room_id
 
     def __str__(self):
         return self.username
@@ -88,8 +110,8 @@ class User(BaseUser, Repr):
             User: A parsed User object which contains the data from the dictionary.
         """
         return User(data.get("id"), data.get("username"), data.get("displayName"), data.get("avatarUrl"), data.get("bio"), data.get("lastOnline"),
-                    data.get("online"), data.get("youAreFollowing"), data.get("roomPermissions"), data.get("numFollowers"), data.get("numFollowing"), 
-                    data.get("followsYou"), data.get("currentRoomId"))
+                    data.get("online"), data.get("youAreFollowing"), Permission.from_dict(data.get("roomPermissions")), data.get("numFollowers"), 
+                    data.get("numFollowing"), data.get("followsYou"), data.get("currentRoomId"))
 
     def to_base_user(self) -> BaseUser:
         """
