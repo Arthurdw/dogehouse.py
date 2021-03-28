@@ -23,6 +23,7 @@
 
 import asyncio
 import websockets
+from time import time
 from uuid import uuid4
 from json import loads, dumps
 from logging import info, debug
@@ -59,7 +60,7 @@ def event(func: Awaitable):
     return func
 
 
-def command(func: Awaitable = None, *, name: str = None):
+def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0):
     """
     Create a new command for dogehouse.
 
@@ -73,7 +74,7 @@ def command(func: Awaitable = None, *, name: str = None):
             Client("token", "refresh_token").run()
     """
     def wrapper(func: Awaitable):
-        commands[str(name if name else func.__name__).lower()] = [func, False]
+        commands[str(name if name else func.__name__).lower()] = [func, False, int(cooldown)]
         return func
     return wrapper(func) if func else wrapper
 
@@ -106,6 +107,7 @@ class DogeClient(Client):
         self.__commands = commands
         self.__waiting_for = {}
         self.__waiting_for_fetches = {}
+        self.__command_cooldown_cache = {}
 
     async def __fetch(self, op: str, data: dict):
         fetch = str(uuid4())
@@ -137,7 +139,15 @@ class DogeClient(Client):
 
             async def execute_command(command_name: str, ctx: Context, *args):
                 command = self.__commands.get(command_name.lower())
+            
                 if command:
+                    instance_id = f"{command_name}-{ctx.author.id}"
+                    invoked_at = time()
+                    if command[2] and instance_id in self.__command_cooldown_cache:
+                        passed = invoked_at - self.__command_cooldown_cache[instance_id]
+                        if passed < command[2]:
+                            return await execute_listener("on_cooldown_trigger", ctx, command_name, command[0], command[2] - passed)
+                    
                     arguments = []
                     params = {}
                     parameters = list(signature(command[0]).parameters.items())
@@ -163,6 +173,7 @@ class DogeClient(Client):
                                 value = Convertor._handle_basic_types(param, value)
 
                             params[key] = value
+                        self.__command_cooldown_cache[instance_id] = invoked_at
                     try:
                         asyncio.ensure_future(command[0](*arguments, **params))
                     except TypeError:

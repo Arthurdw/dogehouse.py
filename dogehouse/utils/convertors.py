@@ -47,7 +47,7 @@ class Convertor:
         if argument == param.default:
             return argument
         
-        if issubclass(param.annotation, (str, int, float)):
+        if issubclass(param.annotation, (str, int, float, bool)):
             return param.annotation(round(float(argument)) if issubclass(param.annotation, int) else argument) 
         
         return argument
