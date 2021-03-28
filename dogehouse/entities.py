@@ -21,21 +21,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .utils import Repr
+from .utils.representation import Represents as Repr
+from .utils.parsers import parse_tokens_to_message as parse_tokens
+from .utils.convertors import Convertor
 
 from datetime import datetime
 from dateutil.parser import isoparse
 from typing import List, Dict, List, Union
 
 
-class BaseUser(Repr):
+class BaseUser(Convertor, Repr):
     def __init__(self, id: str, username: str, displayname: str, avatar_url: str):
         self.id: str = id
         self.username: str = username
         self.displayname: str = displayname
         self.avatar_url: str = avatar_url
         self.mention: str = f"@{username}"
-        
+
     def __str__(self):
         return self.username
 
@@ -52,12 +54,24 @@ class BaseUser(Repr):
         """
         return BaseUser(data.get("userId"), data.get("username"), data.get("displayName"), data.get("avatarUrl"))
 
+    @classmethod
+    async def convert(cls, ctx, param, argument: str):
+        return (await cls._get_user(ctx.client, param, argument)).to_base_user()
+
 
 class User(BaseUser, Repr):
-    def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str):
+    def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str, online: bool,
+                 following: bool, room_permissions, num_followers: int, num_following: int, follows_me: bool, current_room_id: str):
         super().__init__(id, username, displayname, avatar_url)
         self.bio: str = bio
         self.last_seen: datetime = isoparse(last_seen)
+        self.online = online
+        self.following = following
+        self.room_permissions = room_permissions
+        self.num_followers = num_followers
+        self.num_following = num_following
+        self.follows_me = follows_me
+        self.current_room_id = current_room_id
 
     def __str__(self):
         return self.username
@@ -73,10 +87,26 @@ class User(BaseUser, Repr):
         Returns:
             User: A parsed User object which contains the data from the dictionary.
         """
-        return User(data.get("id"), data.get("username"), data.get("displayname"), data.get("avatarUrl"), data.get("bio"), data.get("lastOnline"))
+        return User(data.get("id"), data.get("username"), data.get("displayName"), data.get("avatarUrl"), data.get("bio"), data.get("lastOnline"),
+                    data.get("online"), data.get("youAreFollowing"), data.get("roomPermissions"), data.get("numFollowers"), data.get("numFollowing"), 
+                    data.get("followsYou"), data.get("currentRoomId"))
+
+    def to_base_user(self) -> BaseUser:
+        """
+        Convert a user object to a base user object.
+        This is intended for internal use (Convertors), as you can access all baseuser properties from the user object.
+
+        Returns:
+            BaseUser: The newly created baseuser object, which is derived from the current object.
+        """
+        return BaseUser(self.id, self.username, self.displayname, self.avatar_url)
+
+    @classmethod
+    async def convert(cls, ctx, param, argument: str):
+        return await cls._get_user(ctx.client, param, argument)
 
 
-class UserPreview(Repr):
+class UserPreview(Convertor, Repr):
     def __init__(self, id: str, displayname: str, num_followers: int):
         self.id: str = id
         self.displayname: str = displayname
@@ -97,6 +127,11 @@ class UserPreview(Repr):
             UserPreview: A parsed userpreview object which contains the data from the dictionary.
         """
         return UserPreview(data["id"], data["displayName"], data["numFollowers"])
+
+    @classmethod
+    async def convert(cls, ctx, param, argument: str):
+        user = await cls._get_user(ctx.client, param, argument)
+        return UserPreview(user.id, user.displayname, None)
 
 
 class Room(Repr):
@@ -132,24 +167,11 @@ class Message(Repr):
         self.is_wisper = is_wisper
         self.created_at = isoparse(created_at)
         self.author = author
-        self.content = self.__convert_tokens()
-    
+        self.content = parse_tokens(tokens)
+
     def __str__(self):
         return self.content
-    
-    def __convert_tokens(self) -> str:
-        """Converts the tokens to a proper message"""
-        content = []
-        for token in self.tokens:
-            if token["t"] == "mention":
-                content.append(f"@{token['v']}")
-            elif token["t"] == "emote":
-                content.append(f":{token['v']}:")
-            else:
-                content.append(token["v"])
-        
-        return " ".join(content)
-    
+
     @staticmethod
     def from_dict(data: dict):
         """
@@ -169,7 +191,7 @@ class Client(Repr):
         self.user: User = None
         self.room: Room = room
         self.rooms: List[Room] = rooms
-        self.prefix: List[str] = prefix    
+        self.prefix: List[str] = prefix
 
 
 class Context(Repr):
@@ -178,4 +200,3 @@ class Context(Repr):
         self.bot: Client = self.client
         self.message: Message = message
         self.author: BaseUser = message.author
-        

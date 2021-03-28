@@ -1,3 +1,7 @@
 dist/
 .vscode/
 */**/__pycache__/*
+
+# Testing scripts
+sample.py
+test.py

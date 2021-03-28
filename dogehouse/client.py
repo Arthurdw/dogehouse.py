@@ -27,13 +27,16 @@ from uuid import uuid4
 from json import loads, dumps
 from logging import info, debug
 from inspect import signature, Parameter
+from concurrent.futures import ThreadPoolExecutor
 from typing import Awaitable, List, Union, Tuple, Any
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
 from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
+from .utils.convertors import Convertor
 from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
-from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound
+from .utils.parsers import parse_sentence_to_tokens as parse_message, parse_word_to_token as parse_word
+from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound, MemberNotFound
 
 listeners = {}
 commands = {}
@@ -70,7 +73,7 @@ def command(func: Awaitable = None, *, name: str = None):
             Client("token", "refresh_token").run()
     """
     def wrapper(func: Awaitable):
-        commands[(name if name else func.__name__).lower()] = [func, False]
+        commands[str(name if name else func.__name__).lower()] = [func, False]
         return func
     return wrapper(func) if func else wrapper
 
@@ -124,11 +127,13 @@ class DogeClient(Client):
                 listener_name = listener.lower()
                 listener = self.__listeners.get(listener_name)
                 if listener:
-                    asyncio.ensure_future(listener[0](*(args if listener[1] else [self, *args])))
-                    
-                    if listener_name[3::] in self.__waiting_for:    
+                    asyncio.ensure_future(listener[0](
+                        *(args if listener[1] else [self, *args])))
+
+                    if listener_name[3::] in self.__waiting_for:
                         for fetch_id in self.__waiting_for[listener_name[3::]]:
-                            self.__waiting_for_fetches[fetch_id] = [*args]
+                            self.__waiting_for_fetches[fetch_id] = [*self.__waiting_for_fetches[fetch_id],
+                                                                    list(args)] if fetch_id in self.__waiting_for_fetches else [list(args)]
 
             async def execute_command(command_name: str, ctx: Context, *args):
                 command = self.__commands.get(command_name.lower())
@@ -148,10 +153,15 @@ class DogeClient(Client):
                                 value = param.default
                             else:
                                 value = args[idx]
-                                
+
                                 if param.kind == param.KEYWORD_ONLY:
                                     value = " ".join(args[idx::])
-                            
+
+                            if param.annotation and hasattr(param.annotation, "convert") and callable(param.annotation.convert):
+                                value = await param.annotation.convert(ctx, param, value)
+                            else:
+                                value = Convertor._handle_basic_types(param, value)
+
                             params[key] = value
                     try:
                         asyncio.ensure_future(command[0](*arguments, **params))
@@ -180,40 +190,55 @@ class DogeClient(Client):
                         del self.__fetches[res.get("fetchId")]
                         if fetch == "get_top_public_rooms":
                             info("Dogehouse: Received new rooms")
-                            self.rooms = list(map(Room.from_dict, res["d"]["rooms"]))
+                            self.rooms = list(
+                                map(Room.from_dict, res["d"]["rooms"]))
                             await execute_listener("on_rooms_fetch")
                         elif fetch == "create_room":
                             info("Dogehouse: Created new room")
                             self.room = Room.from_dict(res["d"]["room"])
+                            self.room.users = [self.user]
+                        elif fetch == "get_user_profile":
+                            usr = User.from_dict(res["d"])
+                            info(f"Dogehouse: Received user `{usr.id}`")
+                            self.room.users = [
+                                (user if user.id != usr.id else usr) for user in self.room.users]
+                            await execute_listener("on_user_fetch", usr)
                 elif op == "you-joined-as-speaker":
                     await execute_listener("on_room_join", True)
                 elif op == "join_room_done":
                     self.room = Room.from_dict(res["d"]["room"])
+                    self.room.users.append(self.user)
+                    for user in self.room.users:
+                        if not isinstance(user, User):
+                            await self.__fetch("get_user_profile", dict(userId=user.id))
                     await execute_listener("on_room_join", False)
                 elif op == "new_user_join_room":
                     user = User.from_dict(res["d"]["user"])
                     self.room.users.append(user)
                     await execute_listener("on_user_join", user)
                 elif op == "user_left_room":
-                    user = [user for user in self.room.users if user.id == res["d"]["userId"]][0]
+                    user = [user for user in self.room.users if user.id ==
+                            res["d"]["userId"]][0]
                     self.room.users.remove(user)
                     await execute_listener("on_user_leave", user)
                 elif op == "new_chat_msg":
                     msg = Message.from_dict(res["d"]["msg"])
                     await execute_listener("on_message", msg)
-                    
+
                     if msg.author.id == self.user.id:
                         continue
-                    
+
                     try:
                         async def handle_command(prefix: str):
                             if msg.content.startswith(prefix) and len(msg.content) > len(prefix) + 1:
-                                splitted = msg.content[len(prefix)::].split(" ")
+                                splitted = msg.content[len(
+                                    prefix)::].split(" ")
                                 await execute_command(splitted[0], Context(self, msg), *splitted[1::])
                                 return True
                             return False
 
-                        prefixes = [self.prefix] if isinstance(self.prefix, str) else self.prefix
+                        prefixes = [self.prefix] if isinstance(
+                            self.prefix, str) else self.prefix
 
                         for prefix in prefixes:
                             if await handle_command(prefix):
@@ -222,6 +247,8 @@ class DogeClient(Client):
                         await execute_listener("on_error", e)
                 elif op == "message_deleted":
                     await execute_listener("on_message_delete", res["d"]["deleterId"], res["d"]["messageId"])
+                elif op == "speaker_added":
+                    await execute_listener("on_speaker_add", res["d"]["userId"], res["d"]["roomId"], res["d"]["muteMap"])
                 elif op == "speaker_removed":
                     await execute_listener("on_speaker_delete", res["d"]["userId"], res["d"]["roomId"], res["d"]["muteMap"], res["d"]["raiseHandMap"])
                 elif op == "chat_user_banned":
@@ -316,7 +343,7 @@ class DogeClient(Client):
             client.run()
         """
         def decorator(func: Awaitable):
-            self.__listeners[(name if name else func.__name__).lower()] = [
+            self.__listeners[str(name if name else func.__name__).lower()] = [
                 func, True]
             return func
 
@@ -349,13 +376,13 @@ class DogeClient(Client):
             client.run()
         """
         def decorator(func: Awaitable):
-            self.__commands[(name if name else func.__name__).lower()] = [
+            self.__commands[str(name if name else func.__name__).lower()] = [
                 func, True]
             return func
 
         return decorator
 
-    async def get_top_public_rooms(self, *, cursor=0) -> None:
+    async def get_top_public_rooms(self, *, cursor: int = 0) -> None:
         """
         Manually send a request to update the client rooms property.
         This method gets triggered every X seconds. (Stated in dogehouse.config.topPublicRoomsInterval)
@@ -364,7 +391,7 @@ class DogeClient(Client):
             # TODO: Add cursor description
             cursor (int, optional): [description]. Defaults to 0.
         """
-        await self.__fetch("get_top_public_rooms", dict(cursor=cursor))
+        await self.__fetch("get_top_public_rooms", dict(cursor=int(cursor)))
 
     async def create_room(self, name: str, description: str = "", *, public=True) -> None:
         """
@@ -377,7 +404,7 @@ class DogeClient(Client):
             public (bool, optional): Wether or not the room should be publicly visible. Defaults to True.
         """
         if 2 <= len(name) <= 60:
-            return await self.__fetch("create_room", dict(name=name, description=description, privacy="public" if public else "private"))
+            return await self.__fetch("create_room", dict(name=str(name), description=str(description), privacy="public" if public else "private"))
 
         raise InvalidSize(
             "The `name` property length should be 2-60 characters long.")
@@ -389,7 +416,7 @@ class DogeClient(Client):
         Args:
             id (str): The ID of the room you want to join.
         """
-        await self.__send("join_room", dict(roomId=id))
+        await self.__send("join_room", dict(roomId=str(id)))
 
     async def send(self, message: str, *, whisper: List[str] = []) -> None:
         """
@@ -405,24 +432,7 @@ class DogeClient(Client):
         if not self.room:
             raise NoConnectionException("No room has been joined yet!")
 
-        def parse_message():
-            tokens = []
-            for token in message.split(" "):
-                t, v = "text", token
-                if v.startswith("@") and len(v) >= 3:
-                    t = "mention"
-                    v = v[1:]
-                elif v.startswith("http") and len(v) >= 8:
-                    t = "link"
-                elif v.startswith(":") and v.endswith(":") and len(v) >= 3:
-                    t = "emote"
-                    v = v[1:-1]
-
-                tokens.append(dict(t=t, v=v))
-
-            return tokens
-
-        await self.__send("send_room_chat_msg", dict(whisperedTo=whisper, tokens=parse_message()))
+        await self.__send("send_room_chat_msg", dict(whisperedTo=list(map(str, whisper)), tokens=parse_message(message)))
 
     async def ask_to_speak(self):
         """
@@ -442,7 +452,7 @@ class DogeClient(Client):
         Args:
             user (Union[User, BaseUser, UserPreview]): The user which should be promoted to room moderator.
         """
-        await self.__send("change_mod_status", dict(userId=user if isinstance(user, str) else user.id, value=True))
+        await self.__send("change_mod_status", dict(userId=str(user if isinstance(user, str) else user.id), value=True))
 
     async def unmod(self, user: Union[str, User, BaseUser, UserPreview]):
         """
@@ -451,7 +461,7 @@ class DogeClient(Client):
         Args:
             user (Union[User, BaseUser, UserPreview]): The user from which his permissions should be taken.
         """
-        await self.__send("change_mod_status", dict(userId=user if isinstance(user, str) else user.id, value=False))
+        await self.__send("change_mod_status", dict(userId=str(user if isinstance(user, str) else user.id), value=False))
 
     async def make_admin(self, user: Union[str, User, BaseUser, UserPreview]):
         """
@@ -461,7 +471,7 @@ class DogeClient(Client):
         Args:
             user (Union[User, BaseUser, UserPreview]): The user which should be promoted to room admin.
         """
-        await self.__send("change_room_creator", dict(userId=user if isinstance(user, str) else user.id))
+        await self.__send("change_room_creator", dict(userId=str(user if isinstance(user, str) else user.id)))
 
     async def set_listener(self, user: Union[str, User, BaseUser, UserPreview] = None):
         """
@@ -472,7 +482,7 @@ class DogeClient(Client):
         """
         if not user:
             user = self.user
-        await self.__send("set_listener", dict(userId=user if isinstance(user, str) else user.id))
+        await self.__send("set_listener", dict(userId=str(user if isinstance(user, str) else user.id)))
 
     async def ban_chat(self, user: Union[str, User, BaseUser, UserPreview]):
         """
@@ -482,7 +492,7 @@ class DogeClient(Client):
         Args:
             user (Union[User, BaseUser, UserPreview]): The user from which their chat permissions should be taken.
         """
-        await self.__send("ban_from_room_chat", dict(userId=user if isinstance(user, str) else user.id))
+        await self.__send("ban_from_room_chat", dict(userId=str(user if isinstance(user, str) else user.id)))
 
     async def ban(self, user: Union[str, User, BaseUser, UserPreview]):
         """
@@ -491,16 +501,16 @@ class DogeClient(Client):
         Args:
             user (Union[User, BaseUser, UserPreview]): The user who should be banned.
         """
-        await self.__send("block_from_room", dict(userId=user if isinstance(user, str) else user.id))
+        await self.__send("block_from_room", dict(userId=str(user if isinstance(user, str) else user.id)))
 
-    async def unban(self, user: Union[User, BaseUser, UserPreview]):
+    async def unban(self, user: Union[str, User, BaseUser, UserPreview]):
         """
         Unban a user from the room.
 
         Args:
             user (Union[User, BaseUser, UserPreview]): The user who should be unbanned.
         """
-        await self.__send("unban_from_room", dict(userId=user.id), fetch_id=uuid4())
+        await self.__send("unban_from_room", dict(userId=str((user if isinstance(user, str) else user.id)), fetch_id=uuid4()))
 
     async def add_speaker(self, user: Union[str, User, BaseUser, UserPreview]):
         """
@@ -509,7 +519,7 @@ class DogeClient(Client):
         Args:
             user (Union[User, BaseUser, UserPreview]): The user who will has to be accepted.
         """
-        await self.__send("add_speaker", dict(userId=user if isinstance(user, str) else user.id))
+        await self.__send("add_speaker", dict(userId=str(user if isinstance(user, str) else user.id)))
 
     async def delete_message(self, id: str, user_id: str):
         """
@@ -519,9 +529,9 @@ class DogeClient(Client):
             id (str): The id of the message that should be removed.
             user_id (str): The author of that message.
         """
-        await self.__send("delete_room_chat_message", dict(messageId=id, userId=user_id))
+        await self.__send("delete_room_chat_message", dict(messageId=str(id), userId=str(user_id)))
 
-    async def wait_for(self, event: str, *, timeout: float = 60.0, check: callable = None, tick: float = 0.5) -> Union[Any, Tuple[Any]]:
+    async def wait_for(self, event: str, *, timeout: float = 60.0, check: callable = None, tick: float = 0.5, fetch_arguments: Tuple[Any] = None) -> Union[Any, Tuple[Any]]:
         """
         Manually wait for an event.
 
@@ -537,24 +547,92 @@ class DogeClient(Client):
         Returns:
             Union[Any, Tuple[Any]]: The parameter(s) of the event.
         """
-        passed = 0
-        
         fetch_id = str(uuid4())
-        self.__waiting_for[event] = [*self.__waiting_for[event], fetch_id] if event in self.__waiting_for else [fetch_id]
-        
+        self.__waiting_for[event] = [*self.__waiting_for[event],
+                                     fetch_id] if event in self.__waiting_for else [fetch_id]
+
+        if fetch_arguments:
+            await self.__fetch(*fetch_arguments)
+
+        passed = 0
         while True:
             await asyncio.sleep(tick)
             passed += tick
-            
+
             if passed > timeout:
                 self.__waiting_for[event].remove(fetch_id)
-                raise asyncio.TimeoutError(f"wait_for event timed out (for `{event}`)")
+                raise asyncio.TimeoutError(
+                    f"wait_for event timed out (for `{event}`)")
             elif fetch_id in self.__waiting_for_fetches:
                 data = self.__waiting_for_fetches[fetch_id]
-                
                 if check is not None:
-                    if not check(*data):
-                        continue
-                return (*data,) if len(data) > 1 else data[0]
+                    check_passed = False
+                    for dt in data:
+                        if check(*dt):
+                            data = [dt]
+                            check_passed = True
+                            break
+                        else:
+                            data.remove(dt)
 
-DogeBot = DogeClient            
+                    if not check_passed:
+                        continue
+                return (*data[0],) if len(data[0]) > 1 else data[0][0]
+
+    async def fetch_user(self, argument: str) -> User:
+        """Currently only calls the DogeClient.get_user method, will implement user fetching in the future tho."""
+        return self.get_user(argument)
+        # TODO: IMPLEMENT USER FETCHING
+        #     async def waiter():
+        #         return await self.wait_for("user_fetch", fetch_arguments=("get_user_profile", dict(userId=value)))
+
+        #     user = await waiter()
+
+        #     if user:
+        #         return user
+
+        #     # user = await self.wait_for("user_fetch", fetch_arguments=("get_user_profile", dict(userId=value)))
+
+        #     raise MemberNotFound(f"Could not fetch a member which matches `{value}`")
+
+    def get_user(self, argument: str) -> User:
+        """
+        Fetch a user from the current room.
+        Filtering order:
+            1. ID match
+            2. username match
+            3. displayname match
+
+        Args:
+            argument (str): The user argument.
+
+        Raises:
+            MemberNotFound: The requested member could not be found
+
+        Returns:
+            User: The user that matches the params.
+        """
+        # TODO: Implement global caching instead of just the room
+        parsed = parse_word(argument)
+        if parsed["t"] == "mention":
+            argument = argument[1::]
+
+        argument = argument.lower()
+
+        def check(attribute: str):
+            for user in self.room.users:
+                if hasattr(user, attribute):
+                    attr = getattr(user, attribute)
+                    if hasattr(attr, "lower") and callable(getattr(attr, "lower", False)) and attr.lower() == argument:
+                        return user
+
+        for attr in ["id", "username", "displayname"]:
+            user = check(attr)
+            if user:
+                return user
+
+        raise MemberNotFound(
+            f"Could not find a member which matches the requested argument. (`{parsed['v']}`)")
+
+
+DogeBot = DogeClient

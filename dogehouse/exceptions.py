@@ -21,6 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
 class DogehouseException(Exception):
     """The base exceptrion object."""
     pass
@@ -59,4 +60,9 @@ class NotEnoughArguments(DogehouseException):
 
 class CommandNotFound(DogehouseException):
     """Command is not registered."""
+    pass
+
+
+class MemberNotFound(DogehouseException):
+    """The requested member was not found!"""
     pass
