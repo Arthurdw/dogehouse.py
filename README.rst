@@ -1,6 +1,11 @@
 Python wrapper for the dogehouse API
 ====================================
 
+Documentation
+-------------
+
+You can find the documentation at `dogehouse.arthurdw.com <http://dogehouse.arthurdw.com/>`_
+
 Installation
 ------------
 
