@@ -65,7 +65,7 @@ def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0, alia
     Create a new DogeClient command, which will be handled by the dogehouse python library.
 
     Args:
-        func (Awaitable, optional): Your function (gets supplied automatically when you use the). Defaults to None.
+        func (Awaitable, optional): Your function (gets supplied automatically when you use the decorator). Defaults to None.
         name (str, optional): The call name for your command. Defaults to the function name.
         cooldown (int, optional): The cooldown for the function usage per client. Defaults to 0.
         aliases (List[str], optional): A list of aliases which should trigger your command. Defaults to None.
@@ -237,6 +237,8 @@ class DogeClient(Client):
                     # for user in self.room.users:
                     #     if not isinstance(user, User):
                     #         await self.__fetch("get_user_profile", dict(userId=user.id))
+                    
+                    # TODO: Check if joined as speaker 
                     await execute_listener("on_room_join", False)
                 elif op == "new_user_join_room":
                     user = User.from_dict(res["d"]["user"])
