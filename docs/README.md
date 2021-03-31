@@ -18,7 +18,7 @@ dogehouse.py is an easy to use, fully async, [discord.py](https://discordpy.read
 If it is your first time using the library, these are the spots to get started!
 
 * First steps: [Introduction](intro), [Quickstart](quickstart)
-* Working with Dogehouse: [Getting your tokens]()
+* Working with Dogehouse: [Getting your tokens](quickstart?id=client-credentials)
 * Examples: Examples are available in the [repository](https://github.com/Arthurdw/dogehouse.py/tree/main/examples)
 
 ## Support
