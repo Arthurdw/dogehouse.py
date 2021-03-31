@@ -106,7 +106,7 @@ class DogeClient(Client):
             room (int, optional): The room your client should join. Defaults to None.
             muted (bool, optional): Wether or not the client should be muted. Defaults to False.
             reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
-            prefix (List of strings or a string): The bot prefix.
+            prefix (List of strings or a string, optional): The bot prefix.
         """
         super().__init__(None, room, [], prefix)
 

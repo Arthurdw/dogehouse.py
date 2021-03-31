@@ -33,14 +33,14 @@ class Convertor:
             f"Could not find/create {method} using the {method} convertor for argument `{argument}`")
 
     @staticmethod
-    async def _get_user(client, param, argument):
+    async def _get_user(convertor: str, client, param, argument):
         if argument == param.default:
             return argument
 
         try:
             return await client.fetch_user(argument)
         except MemberNotFound:
-            Convertor._member_not_found("BaseUser", argument)
+            Convertor._member_not_found(convertor, argument)
             
     @staticmethod
     def _handle_basic_types(param, argument):
