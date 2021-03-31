@@ -36,7 +36,7 @@ class Client(dogehouse.DogeClient):
         if message.content.startswith(".hello"):
             await self.send("Hello!")
 
-Client("token", "access_token").run()
+Client("token", "refresh_token").run()
 ```
 
 Lets name this file `example_bot.py`.
@@ -49,7 +49,7 @@ A callback is a function/method which gets called when something happens. So in 
 4. When our client has successfully established a connection we want to create a room, creating a room automatically results in your client being moved to that room.
 5. Since the `on_message()` event gets triggered when any message gets received, it also gets triggered when its own messages get sent. That is why we check if the message author id is the same as our client its idm and if it is we stop the current event call.
 6. Afterwards we check if the message its content (so the sentence/word) starts with `.hello`, if it is we send `Hello!` in the room.
-7. Finally we run the bot with our `token` and `access_token`, if you need help getting your tokens, look in the [Getting your tokens](quickstart?id=client-credentials) section.
+7. Finally we run the bot with our `token` and `refresh_token`, if you need help getting your tokens, look in the [Getting your tokens](quickstart?id=client-credentials) section.
 
 Now that we have made a bot, we still have to run the bot. Because we are using Python this is extremely easy, so we can run it directly using one of these two commands.
 
@@ -77,7 +77,7 @@ class Client(dogehouse.DogeClient):
     async def hello(self, ctx):
         await self.send("Hello!")
 
-Client("token", "access_token", prefix=".").run()
+Client("token", "refresh_token", prefix=".").run()
 ```
 
 Lets walk you through what changed.

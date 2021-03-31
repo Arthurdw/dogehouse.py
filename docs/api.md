@@ -4,7 +4,7 @@ This is the documentation for the whole library.
 
 ## Version Related Info :id=version
 
-`dogehouse.__version__`
+`dogehouse.__version__`  
 A string representation of the version which follows the [Semantic Version 2.0.0 Guidelines](https://semver.org/). For example `1.0.0`.
 
 ## Listeners
@@ -85,7 +85,7 @@ The second command is a bit more complex, for this command `foobar_command` will
 
 ### `on_ready`
 
-This event gets called when the client has started the heartbeat, listeners and has received that the `token` and `access_token` are valid from [dogehouse.tv](https://dogehouse.tv).
+This event gets called when the client has started the heartbeat, listeners and has received that the `token` and `refresh_token` are valid from [dogehouse.tv](https://dogehouse.tv).
 
 ### `on_error`
 
