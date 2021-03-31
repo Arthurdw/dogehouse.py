@@ -200,7 +200,7 @@ class UserPreview(Convertor, Repr):
 
 
 class Room(Repr):
-    def __init__(self, id: str, creator_id: str, name: str, description: str, created_at: str, is_private: bool, count: int, users: List[User, UserPreview]):
+    def __init__(self, id: str, creator_id: str, name: str, description: str, created_at: str, is_private: bool, count: int, users: List[Union[User, UserPreview]]):
         """
         Represents a dogehouse.tv room.
 
@@ -212,7 +212,7 @@ class Room(Repr):
             created_at (str): When the room was created.
             is_private (bool): Wheter or not the room is a private or public room
             count (int): The amount of users the room has.
-            users (List[User, UserPreview]): A list of users whom reside in this room.
+            users (List[Union[User, UserPreview]]): A list of users whom reside in this room.
         """
         self.id: str = id
         self.creator_id: str = creator_id

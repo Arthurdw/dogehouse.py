@@ -27,6 +27,7 @@ from time import time
 from uuid import uuid4
 from json import loads, dumps
 from logging import info, debug
+from traceback import print_exc
 from inspect import signature, Parameter
 from concurrent.futures import ThreadPoolExecutor
 from typing import Awaitable, List, Union, Tuple, Any
@@ -38,6 +39,7 @@ from .utils.convertors import Convertor
 from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
 from .utils.parsers import parse_sentence_to_tokens as parse_message, parse_word_to_token as parse_word
 from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound, MemberNotFound, CommandAlreadyDefined
+
 
 listeners = {}
 commands = {}
@@ -172,16 +174,18 @@ class DogeClient(Client):
                     if parameters:
                         arguments.append(ctx)
                         parameters.pop(0)
+                        
                         for idx, (key, param) in enumerate(parameters):
                             if idx + 1 > len(args) and param.default != Parameter.empty:
-                                value = param.default
+                                params[key] = param.default
+                                continue
                             else:
                                 value = args[idx]
 
-                                if param.kind == param.KEYWORD_ONLY:
+                                if param.kind == param.KEYWORD_ONLY and len(args) - idx - 1 != 0:
                                     value = " ".join(args[idx::])
 
-                            if param.annotation and hasattr(param.annotation, "convert") and callable(param.annotation.convert):
+                            if value and param.annotation and hasattr(param.annotation, "convert") and callable(param.annotation.convert):
                                 value = await param.annotation.convert(ctx, param, value)
                             else:
                                 value = Convertor._handle_basic_types(param, value)
@@ -272,7 +276,10 @@ class DogeClient(Client):
                             if await handle_command(prefix):
                                 break
                     except Exception as e:
-                        await execute_listener("on_error", e)
+                        if "on_error" not in self.__listeners:
+                            print_exc()
+                        else: 
+                            await execute_listener("on_error", e)
                 elif op == "message_deleted":
                     await execute_listener("on_message_delete", res["d"]["deleterId"], res["d"]["messageId"])
                 elif op == "speaker_added":
