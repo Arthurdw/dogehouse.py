@@ -222,6 +222,7 @@ Represents your Dogehouse client.
 * `muted` *(bool, optional)*: Wether or not the client should be muted. Defaults to False.
 * `reconnect_voice` *(bool, optional)*: When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
 * `prefix` *(List of strings or a string, optional)*: The bot prefix.
+* `telemetry` *(bool)*: Wheter you want your bot statistics to be sent to [stats.dogehouse.xyz](https://stats.dogehouse.xyz/). Defaults to False.
 
 #### `async` run(): :id=dogeclient-run
 
