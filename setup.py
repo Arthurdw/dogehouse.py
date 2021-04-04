@@ -22,7 +22,7 @@ setup(
     license='MIT',
     description='A Python wrapper for the Dogehouse API.',
     project_urls={
-        "Documentation": "non extistant right now",
+        "Documentation": "https://dogehouse.arthurdw.com",
     },
     long_description=long_description,
     author='Arthurdw',
@@ -33,6 +33,9 @@ setup(
     install_requires=[
         "websockets",
         "python-dateutil"],
+    extras_require={
+        "telemetry": ["python-socketio[asyncio_client]"]
+    },
     classifiers=[
         # Development statuses:
         # 'Development Status :: 1 - Planning',

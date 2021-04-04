@@ -34,8 +34,9 @@ from typing import Awaitable, List, Union, Tuple, Any
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
-from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
 from .utils.convertors import Convertor
+from .ext import telemetry as telemetry_extension
+from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
 from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
 from .utils.parsers import parse_sentence_to_tokens as parse_message, parse_word_to_token as parse_word
 from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound, MemberNotFound, CommandAlreadyDefined
@@ -98,7 +99,7 @@ def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0, alia
 class DogeClient(Client):
     """Represents your Dogehouse client."""
 
-    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False, prefix: Union[str, List[str]] = "!"):
+    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False, prefix: Union[str, List[str]] = "!", telemetry: bool = False):
         """
         Initialize your Dogehouse client
 
@@ -109,6 +110,7 @@ class DogeClient(Client):
             muted (bool, optional): Wether or not the client should be muted. Defaults to False.
             reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
             prefix (List of strings or a string, optional): The bot prefix.
+            telemetry (bool, optional): Whether or not you want to enable telemetry for your bot. Defaults to False.
         """
         super().__init__(None, room, [], prefix)
 
@@ -124,6 +126,10 @@ class DogeClient(Client):
         self.__waiting_for = {}
         self.__waiting_for_fetches = {}
         self.__command_cooldown_cache = {}
+        self.telemetry_enabled = telemetry
+        
+        if telemetry:
+            asyncio.ensure_future(telemetry_extension.start())
 
     async def __fetch(self, op: str, data: dict):
         fetch = str(uuid4())
@@ -297,6 +303,8 @@ class DogeClient(Client):
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")
             while self.__active:
+                if self.telemetry_enabled:
+                    await telemetry_extension.transmit(self)
                 await self.__socket.send("ping")
                 await asyncio.sleep(heartbeatInterval)
 
