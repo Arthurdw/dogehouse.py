@@ -184,6 +184,8 @@ class DogeClient(Client):
 
                                 if param.kind == param.KEYWORD_ONLY and len(args) - idx - 1 != 0:
                                     value = " ".join(args[idx::])
+                                    
+                            value = value.strip()
 
                             if value and param.annotation and hasattr(param.annotation, "convert") and callable(param.annotation.convert):
                                 value = await param.annotation.convert(ctx, param, value)
@@ -249,8 +251,7 @@ class DogeClient(Client):
                     self.room.users.append(user)
                     await execute_listener("on_user_join", user)
                 elif op == "user_left_room":
-                    user = [user for user in self.room.users if user.id ==
-                            res["d"]["userId"]][0]
+                    user = [user for user in self.room.users if user.id == res["d"]["userId"]][0]
                     self.room.users.remove(user)
                     await execute_listener("on_user_leave", user)
                 elif op == "new_chat_msg":
@@ -263,8 +264,7 @@ class DogeClient(Client):
                     try:
                         async def handle_command(prefix: str):
                             if msg.content.startswith(prefix) and len(msg.content) > len(prefix) + 1:
-                                splitted = msg.content[len(
-                                    prefix)::].split(" ")
+                                splitted = msg.content[len(prefix)::].split(" ")
                                 await execute_command(splitted[0], Context(self, msg), *splitted[1::])
                                 return True
                             return False
