@@ -579,3 +579,41 @@ Represents a user their permissions
 * `asked_to_speak` *(bool)*: Whether or not the user has requested to speak.
 * `is_mod` *(bool)*: Wheter or not the user is a room moderator.
 * `is_admin` *(bool)*: Wheter or not the user is a room admin.
+
+## Exceptions :id=exceptions
+
+These are all the custom exceptions that can get raised by certain actions.
+
+### Refference
+
+#### DogehouseException :id=exceptions-dogehouseexception
+
+The base exceptions object.
+
+#### InvalidAccessToken :id=exceptions-invalidaccesstoken
+
+The exception that gets raised when an invalid access token is present.
+
+#### NoConnectionException :id=exceptions-noconnectionexception
+
+The base exceptions object.
+
+#### InvalidSize :id=exceptions-invalidsize
+
+The exception that gets raised when a variable is not within the requested size.
+
+#### NotEnoughArguments :id=exceptions-noenougharguments
+
+Not enough arguments where provided.
+
+#### CommandNotFound :id=exceptions-commandnotfound
+
+Command is not registered.
+
+#### MemberNotFound :id=exceptions-membernotfound
+
+The requested member was not found!
+
+#### CommandAlreadyDefined :id=exceptions-commandalreadydefined
+
+The command has already been defined by another name or alias.

@@ -23,7 +23,7 @@
 
 
 class DogehouseException(Exception):
-    """The base exceptrion object."""
+    """The base exceptions object."""
     pass
 
 
