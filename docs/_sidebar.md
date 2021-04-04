@@ -1,6 +1,6 @@
 - [Introduction](intro)
 - [Getting started](quickstart)
-- [API Refference](api)
+- [API Reference](api)
 - **Links**
 - [![Github](assets/img/github.png)Github](https://github.com/Arthurdw/dogehouse.py)
 - [![PyPi](assets/img/pypi.png)PyPi](https://pypi.org/project/dogehouse/)
