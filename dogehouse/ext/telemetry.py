@@ -22,13 +22,23 @@ async def transmit(client):
         "bot": {
             "uuid": client.user.id,
             "username": client.user.username,
-            "avatar": client.user.avatar_url 
+            "avatarURL": client.user.avatar_url 
         },
         "room":  {
             "uuid": client.room.id,
             "name": client.room.name,
             "listening": client.room.count,
-            "users": []
+            "users": [
+                {
+                    "id": user.id,
+                    "bio": user.bio if hasattr(user, "bio") else None,
+                    "avatarUrl": user.avatar_url if hasattr(user, "avatar_url") else None,
+                    "username": user.username if hasattr(user, "username") else None,
+                    "displayname": user.displayname,
+                    "numFollowers": user.num_followers,
+                    "numFollowing": user.num_following if hasattr(user, "num_following") else 0,
+                } for user in client.room.users
+            ]
         } if client.room else None
     }))
 
