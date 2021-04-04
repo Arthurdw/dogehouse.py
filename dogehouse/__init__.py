@@ -21,5 +21,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .client import DogeClient, event, command
 from .config import __version__
+from .client import DogeClient, event, command

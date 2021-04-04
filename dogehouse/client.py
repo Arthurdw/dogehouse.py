@@ -488,7 +488,7 @@ class DogeClient(Client):
         Make a user in the room moderator.
 
         Args:
-            user (Union[User, BaseUser, UserPreview]): The user which should be promoted to room moderator.
+            user (Union[str, User, BaseUser, UserPreview]): The user which should be promoted to room moderator.
         """
         await self.__send("change_mod_status", dict(userId=str(user if isinstance(user, str) else user.id), value=True))
 
@@ -497,7 +497,7 @@ class DogeClient(Client):
         Remove a user their room moderator permissions.
 
         Args:
-            user (Union[User, BaseUser, UserPreview]): The user from which his permissions should be taken.
+            user (Union[str, User, BaseUser, UserPreview]): The user from which his permissions should be taken.
         """
         await self.__send("change_mod_status", dict(userId=str(user if isinstance(user, str) else user.id), value=False))
 
@@ -507,7 +507,7 @@ class DogeClient(Client):
         NOTE: This action is irreversable.
 
         Args:
-            user (Union[User, BaseUser, UserPreview]): The user which should be promoted to room admin.
+            user (Union[str, User, BaseUser, UserPreview]): The user which should be promoted to room admin.
         """
         await self.__send("change_room_creator", dict(userId=str(user if isinstance(user, str) else user.id)))
 
@@ -516,7 +516,7 @@ class DogeClient(Client):
         Force a user to be a listener.
 
         Args:
-            user (Union[User, BaseUser, UserPreview], optional): The user which should become a Listener. Defaults to the client.
+            user (Union[str, User, BaseUser, UserPreview], optional): The user which should become a Listener. Defaults to the client.
         """
         if not user:
             user = self.user
@@ -528,7 +528,7 @@ class DogeClient(Client):
         NOTE: This action can not be undone.
 
         Args:
-            user (Union[User, BaseUser, UserPreview]): The user from which their chat permissions should be taken.
+            user (Union[str, User, BaseUser, UserPreview]): The user from which their chat permissions should be taken.
         """
         await self.__send("ban_from_room_chat", dict(userId=str(user if isinstance(user, str) else user.id)))
 
@@ -537,7 +537,7 @@ class DogeClient(Client):
         Bans a user from a room.
 
         Args:
-            user (Union[User, BaseUser, UserPreview]): The user who should be banned.
+            user (Union[str, User, BaseUser, UserPreview]): The user who should be banned.
         """
         await self.__send("block_from_room", dict(userId=str(user if isinstance(user, str) else user.id)))
 
@@ -546,7 +546,7 @@ class DogeClient(Client):
         Unban a user from the room.
 
         Args:
-            user (Union[User, BaseUser, UserPreview]): The user who should be unbanned.
+            user (Union[str, User, BaseUser, UserPreview]): The user who should be unbanned.
         """
         await self.__send("unban_from_room", dict(userId=str((user if isinstance(user, str) else user.id)), fetch_id=uuid4()))
 
@@ -555,7 +555,7 @@ class DogeClient(Client):
         Accept a speaker request from a user.
 
         Args:
-            user (Union[User, BaseUser, UserPreview]): The user who will has to be accepted.
+            user (Union[str, User, BaseUser, UserPreview]): The user who will has to be accepted.
         """
         await self.__send("add_speaker", dict(userId=str(user if isinstance(user, str) else user.id)))
 
