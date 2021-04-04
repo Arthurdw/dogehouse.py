@@ -35,7 +35,6 @@ from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
 from .utils import Repr
 from .utils.convertors import Convertor
-from .ext import telemetry as telemetry_extension
 from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
 from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval, telemetryInterval
 from .utils.parsers import parse_sentence_to_tokens as parse_message, parse_word_to_token as parse_word
@@ -99,7 +98,7 @@ def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0, alia
 class DogeClient(Client):
     """Represents your Dogehouse client."""
 
-    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False, prefix: Union[str, List[str]] = "!", telemetry: bool = False):
+    def __init__(self, token: str, refresh_token: str, *, room: str = None, muted: bool = False, reconnect_voice: bool = False, prefix: Union[str, List[str]] = "!", telemetry = None):
         """
         Initialize your Dogehouse client
 
@@ -126,10 +125,10 @@ class DogeClient(Client):
         self.__waiting_for = {}
         self.__waiting_for_fetches = {}
         self.__command_cooldown_cache = {}
-        self.telemetry_enabled = telemetry
+        self.telemetry = telemetry
         
         if telemetry:
-            asyncio.ensure_future(telemetry_extension.start())
+            asyncio.ensure_future(telemetry.start())
 
     async def __fetch(self, op: str, data: dict):
         fetch = str(uuid4())
@@ -313,9 +312,9 @@ class DogeClient(Client):
                 await asyncio.sleep(topPublicRoomsInterval)
 
         async def perform_telemetry():
-            debug(f"Dogehouse: {'Starting to perform telemetry' if self.telemetry_enabled else 'Passing telemetry, as its disabled'}")
-            while self.telemetry_enabled and self.__active:
-                await telemetry_extension.transmit(self)
+            debug(f"Dogehouse: {'Starting to perform telemetry' if self.telemetry else 'Passing telemetry, as its disabled'}")
+            while self.telemetry and self.__active:
+                await self.telemetry.transmit(self)
                 await asyncio.sleep(telemetryInterval)
 
         try:

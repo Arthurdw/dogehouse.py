@@ -49,3 +49,9 @@ async def transmit(client):
 async def start():
     await socket.connect("wss://socket.dogehouse.xyz", transports=["websocket"], socketio_path="/socket")
     await socket.wait()
+
+class Dogegarden:
+    start = start
+    transmit = transmit
+
+dogegarden = Dogegarden
