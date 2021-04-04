@@ -28,28 +28,28 @@ class DogehouseException(Exception):
 
 
 class InvalidAccessToken(DogehouseException):
-    """The exception that gets thrown when an invalid access token is present."""
+    """The exception that gets raised when an invalid access token is present."""
     def __init__(self):
         message = "An invalid access token is present."
         super(InvalidAccessToken, self).__init__(message)
 
 
 class ConnectionTaken(DogehouseException):
-    """The exception that gets thrown when another client has already taken the connection."""
+    """The exception that gets raised when another client has already taken the connection."""
     def __init__(self):
         message = "Another client has already taken the connection."
         super(ConnectionTaken, self).__init__(message)
 
 
 class NoConnectionException(DogehouseException):
-    """The exception that gets thrown when an action gets executed while no connection has been established yet."""
+    """The exception that gets raised when an action gets executed while no connection has been established yet."""
     def __init__(self, message: str = None):
         message = message if message else "No connection has been established yet."
         super(NoConnectionException, self).__init__(message)
 
 
 class InvalidSize(DogehouseException):
-    """The exception that gets thrown when a variable is not within the requested size."""
+    """The exception that gets raised when a variable is not within the requested size."""
     pass
 
 
@@ -68,5 +68,5 @@ class MemberNotFound(DogehouseException):
     pass
 
 class CommandAlreadyDefined(DogehouseException):
-    """The command has already been defined by another name or alias"""
+    """The command has already been defined by another name or alias."""
     pass 
