@@ -11,7 +11,7 @@ Because of current limitations in the dogehouse.tv WS API a client can only be c
 1. Make sure you are logged in on [dogehouse.tv](https://dogehouse.tv) with the account you want the client to run on.
 2. Open the developer browser pane *(Press `F12`, `CTRL + SHIFT + I` or right click and click on the `View page source` or `Inspect page`)*
 3. At the top you'll see some navigation panels, `Application` should be one of them *(If you dont see it, click on the `≫` symbol)*. Select that panel by clicking on it. 
-4. Expand the `Local Storage` panel and click on `https://dogehouse.tv`, some key/value pairs should show up at the right. The value which has the `@toum/token` key is your client token, and the value with the `@taum/refresh-token` is your refresh token.
+4. Expand the `Local Storage` panel and click on `https://dogehouse.tv`, some key/value pairs should show up at the right. The value which has the `@toum/token` key is your client token, and the value with the `@toum/refresh-token` is your refresh token.
 
 !> Don't share your `token` & `refresh_token` with **anyone**! These tokens permit **FULL** access to your client account.
 
