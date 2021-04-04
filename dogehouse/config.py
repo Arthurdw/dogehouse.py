@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 # Semantic Version
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 
 # The socket url for the dogehouse API
 apiUrl ="wss://api.dogehouse.tv/socket"
@@ -32,6 +32,9 @@ heartbeatInterval = 8
 
 # The interval for the public rooms requests
 topPublicRoomsInterval = 15
+
+# The interval for the telemetry requests
+telemetryInterval = 30
 
 # The time it should take for the connection to be determined dead.
 connectionTimeout = 15

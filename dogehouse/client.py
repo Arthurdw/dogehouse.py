@@ -36,8 +36,8 @@ from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from .utils import Repr
 from .utils.convertors import Convertor
 from .ext import telemetry as telemetry_extension
-from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval
 from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
+from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval, telemetryInterval
 from .utils.parsers import parse_sentence_to_tokens as parse_message, parse_word_to_token as parse_word
 from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound, MemberNotFound, CommandAlreadyDefined
 
@@ -303,8 +303,6 @@ class DogeClient(Client):
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")
             while self.__active:
-                if self.telemetry_enabled:
-                    await telemetry_extension.transmit(self)
                 await self.__socket.send("ping")
                 await asyncio.sleep(heartbeatInterval)
 
@@ -313,6 +311,12 @@ class DogeClient(Client):
             while self.__active and not self.room:
                 await self.get_top_public_rooms()
                 await asyncio.sleep(topPublicRoomsInterval)
+
+        async def perform_telemetry():
+            debug(f"Dogehouse: {'Starting to perform telemetry' if self.telemetry_enabled else 'Passing telemetry, as its disabled'}")
+            while self.telemetry_enabled and self.__active:
+                await telemetry_extension.transmit(self)
+                await asyncio.sleep(telemetryInterval)
 
         try:
             info("Dogehouse: Connecting with Dogehouse websocket")
@@ -334,9 +338,11 @@ class DogeClient(Client):
 
                 event_loop_task = loop.create_task(event_loop())
                 get_top_rooms_task = loop.create_task(get_top_rooms_loop())
+                perform_telemetry_task = loop.create_task(perform_telemetry())
                 await heartbeat()
                 await event_loop_task()
                 await get_top_rooms_task()
+                await perform_telemetry_task()
         except ConnectionClosedOK:
             info("Dogehouse: Websocket connection closed peacefully")
             self.__active = False
