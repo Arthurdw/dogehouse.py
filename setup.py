@@ -17,7 +17,7 @@ with open(path.join(this_dir, "README.rst"), encoding='utf-8') as f:
 
 setup(
     name='dogehouse',
-    packages=["dogehouse", "dogehouse.utils"],
+    packages=["dogehouse", "dogehouse.utils", "dogehouse.ext"],
     version=__version__,
     license='MIT',
     description='A Python wrapper for the Dogehouse API.',

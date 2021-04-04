@@ -1,6 +1,10 @@
+try:
+    from socketio import AsyncClient
+except (ImportError, ModuleNotFoundError):
+    raise ImportError("To use telemetry you must install the `telemetry` option. (run `pip install -U dogehouse[telemetry]`)")    
+
 from json import dumps
 from asyncio import run
-from socketio import AsyncClient
 
 socket = AsyncClient()
 activated = False
