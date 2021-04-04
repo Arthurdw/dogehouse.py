@@ -109,7 +109,7 @@ class DogeClient(Client):
             muted (bool, optional): Wether or not the client should be muted. Defaults to False.
             reconnect_voice (bool, optional): When the client disconnects from the voice server, should it try to reconnect. Defaults to False.
             prefix (List of strings or a string, optional): The bot prefix.
-            telemetry (bool, optional): Whether or not you want to enable telemetry for your bot. Defaults to False.
+            telemetry (telemetry class, optional): The telemetry class that will be used. Defaults to None.
         """
         super().__init__(None, room, [], prefix)
 
