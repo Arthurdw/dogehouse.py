@@ -24,6 +24,7 @@ async def transmit(client):
     
     await socket.emit("transmit", dumps({
         "bot": {
+            "type": "dogehouse.py",
             "uuid": client.user.id,
             "username": client.user.username,
             "avatarURL": client.user.avatar_url 
