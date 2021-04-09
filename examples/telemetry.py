@@ -21,12 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from random import choice, randint
+
 import dogehouse
 from dogehouse.entities import Context, User
 from dogehouse.ext.telemetry import dogegarden
-
-from random import choice, randint
-from asyncio import TimeoutError
 
 
 class Client(dogehouse.DogeClient):
@@ -46,11 +45,13 @@ class Client(dogehouse.DogeClient):
         reason = "literally no reason" if reason is None else reason
 
         await self.send(f"{user.mention} just got pepe'd by {ctx.author.mention} for {reason} " +
-                        f" {choice([':PepeLaugh:', ':pepeD:', ':PepegeHmm:', ':pepeMeltdown:', ':pepeP:', ':PepeS:', ':PepeSpit:'])}" * randint(2, 16))
-    
+                        f" {choice([':PepeLaugh:', ':pepeD:', ':PepegeHmm:', ':pepeMeltdown:', ':pepeP:', ':PepeS:', ':PepeSpit:'])}" * randint(
+            2, 16))
+
     @dogehouse.event
     async def on_cooldown_trigger(self, ctx: Context, command_name: str, _, time_left: float):
-        await self.send(f"{ctx.author.mention} the `{command_name}` command is still on cooldown for {round(time_left, 2)}seconds!")
+        await self.send(
+            f"{ctx.author.mention} the `{command_name}` command is still on cooldown for {round(time_left, 2)}seconds!")
 
     @dogehouse.event
     async def on_error(self, error: Exception):
@@ -59,15 +60,15 @@ class Client(dogehouse.DogeClient):
         elif isinstance(error, dogehouse.exceptions.MemberNotFound):
             return await self.send("Could not find that member!")
         await self.send(f"Oops, an {type(error).__name__} error got thrown!")
-        
+
     @dogehouse.event
     async def on_speaker_request(self, user_id: str, _):
         await self.add_speaker(user_id)
-    
+
     @dogehouse.event
     async def on_speaker_add(self, user_id: str, _, __):
         await self.send(f"Welcome to the stage {(await self.fetch_user(user_id)).mention}")
-        
+
 
 if __name__ == "__main__":
     Client("token", "refresh_token", prefix=[".", "!", "$"], telemetry=dogegarden).run()

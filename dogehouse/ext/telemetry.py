@@ -1,35 +1,37 @@
 try:
     from socketio import AsyncClient
 except (ImportError, ModuleNotFoundError):
-    raise ImportError("To use telemetry you must install the `telemetry` option. (run `pip install -U dogehouse[telemetry]`)")    
+    raise ImportError(
+        "To use telemetry you must install the `telemetry` option. (run `pip install -U dogehouse[telemetry]`)")
 
 from json import dumps
-from asyncio import run
 
 socket = AsyncClient()
 activated = False
 
+
 @socket.event
 async def connect():
     global activated
-    
+
     activated = True
     await socket.emit("init")
-    
+
+
 async def transmit(client):
     global activated
 
     if not activated or not hasattr(client.user, "id"):
         return
-    
+
     await socket.emit("transmit", dumps({
         "bot": {
             "type": "dogehouse.py",
             "uuid": client.user.id,
             "username": client.user.username,
-            "avatarURL": client.user.avatar_url 
+            "avatarURL": client.user.avatar_url
         },
-        "room":  {
+        "room": {
             "uuid": client.room.id,
             "name": client.room.name,
             "listening": client.room.count,
@@ -47,12 +49,15 @@ async def transmit(client):
         } if client.room else None
     }))
 
+
 async def start():
     await socket.connect("wss://socket.dogehouse.xyz", transports=["websocket"], socketio_path="/socket")
     await socket.wait()
 
+
 class Dogegarden:
     start = start
     transmit = transmit
+
 
 dogegarden = Dogegarden

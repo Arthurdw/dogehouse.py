@@ -26,8 +26,10 @@ from typing import Any
 
 class Represents:
     """Handles representations for classes"""
+
     def __repr__(self):
         return represents(self)
+
 
 def represents(obj: object) -> str:
     """
@@ -37,14 +39,15 @@ def represents(obj: object) -> str:
         obj (object): The object (class) that should be represented.
 
     Returns:
-        str: A correct representation of the object inlcuding the object parameters.
+        str: A correct representation of the object including the object parameters.
     """
-    def proccess(item: Any):
+
+    def process(item: Any):
         if issubclass(item.__class__, Represents):
             item = repr(item)
         elif isinstance(item, str) and len(item) > 20:
             item = item[0:17] + "..."
         return item
-    
+
     items = [i for i in vars(obj).items() if not i[0].startswith("_")]
-    return f"<{obj.__class__.__name__} {' '.join(list(map(lambda p: f'{p[0]}={proccess(p[1])}', items)))}>"
+    return f"<{obj.__class__.__name__} {' '.join(list(map(lambda p: f'{p[0]}={process(p[1])}', items)))}>"

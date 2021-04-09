@@ -25,7 +25,7 @@
 __version__ = "1.5.1"
 
 # The socket url for the dogehouse API
-apiUrl ="wss://api.dogehouse.tv/socket"
+apiUrl = "wss://api.dogehouse.tv/socket"
 
 # The websocket heartbeat interval (ping's on this interval)
 heartbeatInterval = 8

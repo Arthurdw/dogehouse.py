@@ -30,15 +30,15 @@ class Client(DogeClient):
     async def on_ready(self):
         print(f"Successfully connected as {self.user}!")
         await self.create_room("Hello World!")
-        
+
     @event
     async def on_user_join(self, user: User):
         await self.send(f"Welcome {user.mention}")
-        
+
     @command
     async def say(self, _, *, message: str):
         await self.send(message)
-            
+
 
 if __name__ == "__main__":
     Client("YourToken", "YourRefreshToken", prefix=".").run()

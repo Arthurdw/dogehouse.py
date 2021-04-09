@@ -21,27 +21,28 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .utils.representation import Represents as Repr
-from .utils.parsers import parse_tokens_to_message as parse_tokens
-from .utils.convertors import Convertor
-
 from datetime import datetime
+from typing import Dict, List, Union, Optional
+
 from dateutil.parser import isoparse
-from typing import List, Dict, List, Union
+
+from .utils.convertors import Convertor
+from .utils.parsers import parse_tokens_to_message as parse_tokens
+from .utils.representation import Represents as Repr
 
 
 class BaseUser(Convertor, Repr):
-    def __init__(self, id: str, username: str, displayname: str, avatar_url: str):
+    def __init__(self, user_id: str, username: str, displayname: str, avatar_url: str):
         """
         Represents the most basic information of a fetched user.
 
         Args:
-            id (str): The user their id.
+            user_id (str): The user their id.
             username (str): The username of the user. (Their mention name)
             displayname (str): The displayname of the user.
             avatar_url (str): The user their avatar URL.
         """
-        self.id: str = id
+        self.id: str = user_id
         self.username: str = username
         self.displayname: str = displayname
         self.avatar_url: str = avatar_url
@@ -75,13 +76,13 @@ class Permission(Repr):
 
         Args:
             asked_to_speak (bool): Whether or not the user has requested to speak.
-            is_mod (bool): Wheter or not the user is a room moderator.
-            is_admin (bool): Wheter or not the user is a room admin.
+            is_mod (bool): Whether or not the user is a room moderator.
+            is_admin (bool): Whether or not the user is a room admin.
         """
         self.asked_to_speak: bool = asked_to_speak
         self.is_mod: bool = is_mod
         self.is_admin: bool = is_admin
-        
+
     @staticmethod
     def from_dict(data: dict):
         """
@@ -99,27 +100,29 @@ class Permission(Repr):
 
 
 class User(BaseUser, Repr):
-    def __init__(self, id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str, online: bool,
-                 following: bool, room_permissions: Permission, num_followers: int, num_following: int, follows_me: bool, current_room_id: str):
+    def __init__(self, user_id: str, username: str, displayname: str, avatar_url: str, bio: str, last_seen: str,
+                 online: bool,
+                 following: bool, room_permissions: Permission, num_followers: int, num_following: int,
+                 follows_me: bool, current_room_id: str):
         """
         Represents a dogehouse.tv user.
 
         Args:
-            id (str): The user their id.
+            user_id (str): The user their id.
             username (str): The username of the user. (Their mention name)
             displayname (str): The displayname of the user.
             avatar_url (str): The user their avatar URL.
-            bio (str): The user ther biography.
+            bio (str): The user their biography.
             last_seen (str): When the user was last online.
             online (bool): Whether or not the user is currently online
-            following (bool): Wheter or not the client is following this user.
+            following (bool): Whether or not the client is following this user.
             room_permissions (Permission): The user their permissions for the current room.
             num_followers (int): The amount of followers the user has.
             num_following (int): The amount of users this user is following.
-            follows_me (bool): Wether or not the user follows the client.
+            follows_me (bool): Whether or not the user follows the client.
             current_room_id (str): The user their current room id.
         """
-        super().__init__(id, username, displayname, avatar_url)
+        super().__init__(user_id, username, displayname, avatar_url)
         self.bio: str = bio
         self.last_seen: datetime = isoparse(last_seen)
         self.online: bool = online
@@ -144,17 +147,19 @@ class User(BaseUser, Repr):
         Returns:
             User: A parsed User object which contains the data from the dictionary.
         """
-        return User(data.get("id"), data.get("username"), data.get("displayName"), data.get("avatarUrl"), data.get("bio"), data.get("lastOnline"),
-                    data.get("online"), data.get("youAreFollowing"), Permission.from_dict(data.get("roomPermissions")), data.get("numFollowers"), 
+        return User(data.get("id"), data.get("username"), data.get("displayName"), data.get("avatarUrl"),
+                    data.get("bio"), data.get("lastOnline"),
+                    data.get("online"), data.get("youAreFollowing"), Permission.from_dict(data.get("roomPermissions")),
+                    data.get("numFollowers"),
                     data.get("numFollowing"), data.get("followsYou"), data.get("currentRoomId"))
 
     def to_base_user(self) -> BaseUser:
         """
         Convert a user object to a base user object.
-        This is intended for internal use (Convertors), as you can access all baseuser properties from the user object.
+        This is intended for internal use (Convertors), as you can access all BaseUser properties from the user object.
 
         Returns:
-            BaseUser: The newly created baseuser object, which is derived from the current object.
+            BaseUser: The newly created BaseUser object, which is derived from the current object.
         """
         return BaseUser(self.id, self.username, self.displayname, self.avatar_url)
 
@@ -164,16 +169,16 @@ class User(BaseUser, Repr):
 
 
 class UserPreview(Convertor, Repr):
-    def __init__(self, id: str, displayname: str, num_followers: int):
+    def __init__(self, user_id: str, displayname: str, num_followers: int):
         """
-        Represents a userpreview from the Client.rooms users list.
+        Represents a user-preview from the Client.rooms users list.
 
         Args:
-            id (string): The user their id.
+            user_id (string): The user their id.
             displayname (string): The display name of the user.
             num_followers (integer): The amount of followers the user has.
         """
-        self.id: str = id
+        self.id: str = user_id
         self.displayname: str = displayname
         self.num_followers: int = num_followers
 
@@ -189,7 +194,7 @@ class UserPreview(Convertor, Repr):
             data (dict): The parsed json websocket response.
 
         Returns:
-            UserPreview: A parsed userpreview object which contains the data from the dictionary.
+            UserPreview: A parsed UserPreview object which contains the data from the dictionary.
         """
         return UserPreview(data["id"], data["displayName"], data["numFollowers"])
 
@@ -200,21 +205,22 @@ class UserPreview(Convertor, Repr):
 
 
 class Room(Repr):
-    def __init__(self, id: str, creator_id: str, name: str, description: str, created_at: str, is_private: bool, count: int, users: List[Union[User, UserPreview]]):
+    def __init__(self, room_id: str, creator_id: str, name: str, description: str, created_at: str, is_private: bool,
+                 count: int, users: List[Union[User, UserPreview]]):
         """
         Represents a dogehouse.tv room.
 
         Args:
-            id (str): The id of the room.
+            room_id (str): The id of the room.
             creator_id (str): The id of the user who created the room.
             name (str): The name of the room.
             description (str): The description of the room.
             created_at (str): When the room was created.
-            is_private (bool): Wheter or not the room is a private or public room
+            is_private (bool): Whether or not the room is a private or public room
             count (int): The amount of users the room has.
             users (List[Union[User, UserPreview]]): A list of users whom reside in this room.
         """
-        self.id: str = id
+        self.id: str = room_id
         self.creator_id: str = creator_id
         self.name: str = name
         self.description: str = description
@@ -225,7 +231,7 @@ class Room(Repr):
 
     def __str__(self):
         return self.name
-    
+
     def __sizeof__(self):
         return self.count
 
@@ -240,25 +246,27 @@ class Room(Repr):
         Returns:
             Room: A parsed room object which contains the data from the dictionary.
         """
-        return Room(data["id"], data["creatorId"], data["name"], data["description"], data["inserted_at"], data["isPrivate"], data["numPeopleInside"],
+        return Room(data["id"], data["creatorId"], data["name"], data["description"], data["inserted_at"],
+                    data["isPrivate"], data["numPeopleInside"],
                     list(map(UserPreview.from_dict, data["peoplePreviewList"])))
 
 
 class Message(Repr):
-    def __init__(self, id: str, tokens: List[Dict[str, str]], is_wisper: bool, created_at: str, author: BaseUser):
+    def __init__(self, message_id: str, tokens: List[Dict[str, str]], is_whisper: bool, created_at: str,
+                 author: BaseUser):
         """
         Represents a message that gets sent in the chat.
 
         Args:
-            id (str): The message its id
+            message_id (str): The message its id
             tokens (List[Dict[str, str]]): The message content tokens, for if you want to manually parse the message.
-            is_wisper (bool): Whether or not the message was whispered to the client.
+            is_whisper (bool): Whether or not the message was whispered to the client.
             created_at (str): When the message was created.
             author (BaseUser): The user who sent the message
         """
-        self.id = id
+        self.id = message_id
         self.tokens = tokens
-        self.is_wisper = is_wisper
+        self.is_whisper = is_whisper
         self.created_at = isoparse(created_at)
         self.author = author
         self.content = parse_tokens(tokens)
@@ -281,18 +289,20 @@ class Message(Repr):
 
 
 class Client(Repr):
-    def __init__(self, user: User, room: Room, rooms: List[Room], prefix: List[str]):
+    def __init__(self, user: Optional[User], room: Optional[Union[Room, str]], rooms: List[Room], prefix: List[str]):
         """
         The base client for the DogeHouse client.
 
         Args:
-            user (User): The client its user object.
-            room (Room): The current room in wich the Client resides. Is `None` if no room has been joined.
-            rooms (List[Room]): A collection of all the rooms which the client has cached. This gets fetched automatically if no room has been joined. You can also update this using the `async DogeClient.get_top_public_rooms` method.
+            user (Optional User): The client its user object.
+            room (Optional Room): The current room in which the Client resides. Is `None` if no room has been joined.
+            rooms (List[Room]): A collection of all the rooms which the client has cached. This gets fetched
+                                automatically if no room has been joined. You can also update this using the
+                                `async DogeClient.get_top_public_rooms` method.
             prefix (List[str]): A collection of prefixes to which the client should respond.
         """
-        self.user: User = None
-        self.room: Room = room
+        self.user: Optional[User] = user
+        self.room: Optional[Union[Room, str]] = room
         self.rooms: List[Room] = rooms
         self.prefix: List[str] = prefix
 

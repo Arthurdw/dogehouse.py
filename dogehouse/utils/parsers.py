@@ -59,6 +59,7 @@ def parse_word_to_token(word: str) -> Dict[str, str]:
 
     return dict(t=t, v=v)
 
+
 def parse_tokens_to_message(tokens: List[Dict[str, str]]) -> str:
     """
     Parse a collection of tokens into a usable/readable string.
@@ -68,8 +69,9 @@ def parse_tokens_to_message(tokens: List[Dict[str, str]]) -> str:
 
     Returns:
         str: The parsed collection its content
-    """ 
+    """
     return " ".join(map(parse_token_to_message, tokens))
+
 
 def parse_token_to_message(token: Dict[str, str]) -> str:
     v = token["v"]

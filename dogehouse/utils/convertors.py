@@ -21,8 +21,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .parsers import parse_word_to_token
-
 from ..exceptions import MemberNotFound
 
 
@@ -41,15 +39,13 @@ class Convertor:
             return await client.fetch_user(argument)
         except MemberNotFound:
             Convertor._member_not_found(convertor, argument)
-            
+
     @staticmethod
-    def _handle_basic_types(param, argument):
+    def handle_basic_types(param, argument):
         if argument == param.default:
             return argument
-        
+
         if issubclass(param.annotation, (str, int, float, bool)):
-            return param.annotation(round(float(argument)) if issubclass(param.annotation, int) else argument) 
-        
+            return param.annotation(round(float(argument)) if issubclass(param.annotation, int) else argument)
+
         return argument
-        
-        
