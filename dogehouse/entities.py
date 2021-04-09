@@ -70,18 +70,20 @@ class BaseUser(Convertor, Repr):
 
 
 class Permission(Repr):
-    def __init__(self, asked_to_speak: bool, is_mod: bool, is_admin: bool):
+    def __init__(self, asked_to_speak: bool, is_mod: bool, is_admin: bool, is_speaker: bool):
         """
         Represents a user their permissions
 
         Args:
-            asked_to_speak (bool): Whether or not the user has requested to speak.
-            is_mod (bool): Whether or not the user is a room moderator.
-            is_admin (bool): Whether or not the user is a room admin.
+            asked_to_speak (bool): Whether the user has requested to speak.
+            is_mod (bool): Whether the user is a room moderator.
+            is_admin (bool): Whether the user is a room admin.
+            is_speaker (bool): Whether the user is a speaker.
         """
         self.asked_to_speak: bool = asked_to_speak
         self.is_mod: bool = is_mod
         self.is_admin: bool = is_admin
+        self.is_speaker: bool = is_speaker
 
     @staticmethod
     def from_dict(data: dict):
@@ -95,8 +97,9 @@ class Permission(Repr):
             Permission: A parsed Permission object which contains the data from the dictionary.
         """
         if data:
-            return Permission(data.get("askedToSpeak"), data.get("isMod"), data.get("isAdmin"))
-        return Permission(False, False, False)
+            return Permission(data.get("askedToSpeak", False), data.get("isMod", False), False,
+                              data.get("isSpeaker", False))
+        return Permission(False, False, False, False)
 
 
 class User(BaseUser, Repr):

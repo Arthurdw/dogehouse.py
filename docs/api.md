@@ -191,8 +191,7 @@ This event gets called when a speaker has been added.
 
 ##### Parameters
 
-* `user_id` *(string)*: The id of the user who has been added to the speakers list.
-* `room_id` *(string)*: The id of the room to which the user now can speak in.
+* `user` *([User](api?id=entity-user))*: The user whom can now speak.
 * `muted` *(A dictionary with as keys strings and values booleans)*: A dictionary where the keys are the speakers their
   id's from speakers, and the value is whether they are muted
 
@@ -202,8 +201,7 @@ This event gets called when a speaker has been removed
 
 ##### Parameters
 
-* `user_id` *(string)*: The id of the user who has been added to the speakers list.
-* `room_id` *(string)*: The id of the room to which the user now can speak in.
+* `user` *([User](api?id=entity-user))*: The user whom can now no longer speak.
 * `muted` *(A dictionary with as keys strings and values booleans)*: A dictionary where the keys are the speakers their
   id's from speakers, and the value is whether they are muted
 * `raised_hands` *(A dictionary with as keys strings and values booleans)*: A dictionary where the keys are the user
@@ -216,6 +214,15 @@ The event that gets called when a user has been banned.
 ##### Parameters
 
 * `user_id` *(string)*: The id of the user who has been banished.
+
+### `on_permission_change`
+
+The event that gets called when a user has been promoted/demoted from/to admin.
+
+##### Parameters
+
+* `user` *([User](api?id=entity-user))*: The user from whom its permissions have been changed.
+* `permission_type` *(string [mod|admin])*: The permission that got changed.
 
 ## Entities
 
@@ -625,6 +632,7 @@ Represents a user their permissions
 * `asked_to_speak` *(bool)*: Whether the user has requested to speak.
 * `is_mod` *(bool)*: Whether the user is a room moderator.
 * `is_admin` *(bool)*: Whether the user is a room admin.
+* `is_speaker` *(bool):*: Whether the user is a speaker in the room.
 
 ## Exceptions :id=exceptions
 

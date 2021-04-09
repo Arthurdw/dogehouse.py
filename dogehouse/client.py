@@ -295,18 +295,43 @@ class DogeClient(Client):
                 elif op == "message_deleted":
                     await execute_listener("on_message_delete", res["d"]["deleterId"], res["d"]["messageId"])
                 elif op == "speaker_added":
-                    await execute_listener("on_speaker_add", res["d"]["userId"], res["d"]["roomId"],
-                                           res["d"]["muteMap"])
+                    for user in self.room.users:
+                        if user.id == res["d"]["userId"] and user.current_room_id == res["d"]["roomId"]:
+                            user.room_permissions.is_speaker = True
+                            await execute_listener("on_speaker_add", user, res["d"]["muteMap"])
+                            break
                 elif op == "speaker_removed":
-                    await execute_listener("on_speaker_delete", res["d"]["userId"], res["d"]["roomId"],
-                                           res["d"]["muteMap"], res["d"]["raiseHandMap"])
+                    for user in self.room.users:
+                        if user.id == res["d"]["userId"] and user.current_room_id == res["d"]["roomId"]:
+                            user.room_permissions.is_speaker = False
+                            await execute_listener("on_speaker_delete", user, res["d"]["muteMap"],
+                                                   res["d"]["raiseHandMap"])
+                            break
                 elif op == "chat_user_banned":
                     await execute_listener("on_user_ban", res["d"]["userId"])
                 elif op == "hand_raised":
                     await execute_listener("on_speaker_request", res["d"]["userId"], res["d"]["roomId"])
                 elif op == "get_current_room_users_done":
                     self.room.users = list(map(User.from_dict, res["d"]["users"]))
+                    for user in self.room.users:
+                        if user.id == self.room.creator_id:
+                            user.room_permissions.is_admin = True
                     await execute_listener("on_room_users_fetch")
+                elif op == "mod_changed" or op == "new_room_creator":
+                    changed_permission_type = "mod" if op == "mod_changed" else "admin"
+                    attribute = f"is_{changed_permission_type}"
+
+                    if changed_permission_type == "admin":
+                        for user in self.room.users:
+                            if user.room_permissions.is_admin:
+                                user.room_permissions.is_admin = False
+                                await execute_listener("on_permission_change", user, changed_permission_type)
+
+                    for user in self.room.users:
+                        if user.id == res["d"]["userId"] and user.current_room_id == res["d"]["roomId"]:
+                            setattr(user.room_permissions, attribute, not getattr(user.room_permissions, attribute))
+                            await execute_listener("on_permissions_change", user, changed_permission_type)
+                            break
 
         async def heartbeat():
             debug("Dogehouse: Starting heartbeat")
