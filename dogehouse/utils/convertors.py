@@ -25,6 +25,8 @@ from ..exceptions import MemberNotFound
 
 
 class Convertor:
+    basic_types = (str, int, float, bool)
+
     @staticmethod
     def _member_not_found(method: str, argument: str):
         raise MemberNotFound(
@@ -45,7 +47,25 @@ class Convertor:
         if argument == param.default:
             return argument
 
-        if issubclass(param.annotation, (str, int, float, bool)):
-            return param.annotation(round(float(argument)) if issubclass(param.annotation, int) else argument)
+        try:
+            return Convertor.convert_basic_types(argument, param.annotation)
+        except TypeError:
+            return argument
 
-        return argument
+    @staticmethod
+    def convert_basic_types(value, out: type):
+        if not isinstance(out, type):
+            raise TypeError(f"The out value must be a type. But '{out}' was supplied!")
+
+        if isinstance(value, out):
+            return value
+
+        if not isinstance(out, Convertor.basic_types):
+            raise TypeError(f"The 'out' parameter must be one of the basic types. But '{out.__name__}' was supplied!"
+                            f"(basic types: {', '.join(t.__name__ for t in Convertor.basic_types)})")
+
+        if not isinstance(value, Convertor.basic_types):
+            raise TypeError(f"Can not convert '{type(value)}' into {out}, because it is not one of the basic types."
+                            f"(basic types: {', '.join(t.__name__ for t in Convertor.basic_types)})")
+
+        return out(round(float(value)) if issubclass(out, int) else value)

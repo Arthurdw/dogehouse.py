@@ -17,6 +17,12 @@ There are currently two listeners in the library, the event listener and the com
 The events get registered by the `dogehouse.event` decorator. All events that are recognised can be found in
 the [Event Reference](api?id=events)
 
+##### Arguments
+
+* `func` *(Awaitable, optional)*: Your callback (gets supplied automatically when you use the decorator). Defaults to
+  None.
+* `name` *(str, optional)*: The event name. Defaults to the function name.
+
 ##### Example
 
 ```py
@@ -259,6 +265,8 @@ Represents your Dogehouse client.
   Defaults to False.
 * `prefix` *(List of strings or a string, optional)*: The bot prefix.
 * `telemetry` *(telemetry object)*: The telemetry class that will be used. Defaults to None.
+* `commands` *(Protected dictionary, where the keys are strings, and the values are callbacks)*: A list of commands! The
+  keys are the command call (every alias is seen as a separate command), and the values are the callback!
 
 #### `async` run(): :id=dogeclient-run
 
@@ -421,8 +429,8 @@ Manually wait for an event.
 
 #### `async` fetch_user(argument): :id=dogeclient-fetch_user
 
-Currently, only calls the [`DogeClient.get_user`](api?id=dogeclient-get_user) method, will implement user fetching in the
-future tho.
+Currently, only calls the [`DogeClient.get_user`](api?id=dogeclient-get_user) method, will implement user fetching in
+the future tho.
 
 #### get_user(argument): :id=dogeclient-get_user
 

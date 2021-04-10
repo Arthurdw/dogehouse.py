@@ -33,20 +33,24 @@ from uuid import uuid4
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
+from .exceptions import *
+from .utils.convertors import Convertor
 from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval, telemetryInterval
 from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
-from .exceptions import NoConnectionException, InvalidAccessToken, InvalidSize, NotEnoughArguments, CommandNotFound, \
-    MemberNotFound, CommandAlreadyDefined
-from .utils.convertors import Convertor
 from .utils.parsers import parse_sentence_to_tokens as parse_message, parse_word_to_token as parse_word
 
 listeners = {}
 commands = {}
 
 
-def event(func: Awaitable):
+def event(func: Awaitable, *, name: str = None):
     """
     Create an event listener for dogehouse.
+
+    Args:
+        func (Awaitable, optional): Your callback (gets supplied automatically when you use the decorator).
+                                    Defaults to None.
+        name (str, optional): The event name. Defaults to the function name.
 
     Example:
         class Client(dogehouse.DogeClient):
@@ -57,16 +61,19 @@ def event(func: Awaitable):
         if __name__ == "__main__":
             Client("token", "refresh_token").run()
     """
-    listeners[func.__name__.lower()] = [func, False]
-    return func
+
+    def wrapper(_func: Awaitable):
+        listeners[(Convertor.convert_basic_types(name, str) if name else func.__name__).lower()] = [func, False]
+
+    return wrapper(func) if func else wrapper
 
 
-def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0, aliases: List[str] = None):
+def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0, aliases: List[str] = []):
     """
     Create a new DogeClient command, which will be handled by the dogehouse python library.
 
     Args:
-        func (Awaitable, optional): Your function (gets supplied automatically when you use the decorator).
+        func (Awaitable, optional): Your callback (gets supplied automatically when you use the decorator).
                                     Defaults to None.
         name (str, optional): The call name for your command. Defaults to the function name.
         cooldown (int, optional): The cooldown for the function usage per client. Defaults to 0.
@@ -88,9 +95,8 @@ def command(func: Awaitable = None, *, name: str = None, cooldown: int = 0, alia
                 raise CommandAlreadyDefined(f"Command `{_name}` has already been defined by a name or alias!")
             commands[_name] = [_func, False, int(cooldown)]
 
-        save(str(name if name else _func.__name__).lower())
-        if aliases:
-            any(save(alias) for alias in aliases)
+        for cmd_name in (name if name else _func.__name__, *aliases):
+            save(Convertor.convert_basic_types(cmd_name, str).lower())
 
         return _func
 
@@ -133,6 +139,10 @@ class DogeClient(Client):
 
         if telemetry:
             asyncio.ensure_future(telemetry.start())
+
+    @property
+    def commands(self):
+        return self.__commands
 
     async def __fetch(self, op: str, data: dict):
         fetch = str(uuid4())
