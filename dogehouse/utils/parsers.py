@@ -23,6 +23,12 @@
 
 from typing import List, Dict
 
+message_formats = {
+    "mention": "@{}",
+    "emote": ":{}:",
+    "block": "`{}`"
+}
+
 
 def parse_sentence_to_tokens(sentence: str) -> List[Dict[str, str]]:
     """
@@ -47,6 +53,7 @@ def parse_word_to_token(word: str) -> Dict[str, str]:
     Returns:
         Dict[str, str]: A token which represents the word.
     """
+    # TODO: Do some regex magic instead of this
     t, v = "text", str(word)
     if v.startswith("@") and len(v) >= 3:
         t = "mention"
@@ -55,6 +62,9 @@ def parse_word_to_token(word: str) -> Dict[str, str]:
         t = "link"
     elif v.startswith(":") and v.endswith(":") and len(v) >= 3:
         t = "emote"
+        v = v[1:-1]
+    elif v.startswith("`") and v.endswith("`") and len(v) >= 3:
+        t = "block"
         v = v[1:-1]
 
     return dict(t=t, v=v)
@@ -75,8 +85,8 @@ def parse_tokens_to_message(tokens: List[Dict[str, str]]) -> str:
 
 def parse_token_to_message(token: Dict[str, str]) -> str:
     v = token["v"]
-    if token["t"] == "mention":
-        v = f"@{token['v']}"
-    elif token["t"] == "emote":
-        v = f":{token['v']}:"
+    for k, fm in message_formats.items():
+        if token["t"] == k:
+            v = fm.format(token["v"])
+            break
     return v
