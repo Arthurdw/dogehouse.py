@@ -265,6 +265,9 @@ Represents your Dogehouse client.
   Defaults to False.
 * `prefix` *(List of strings or a string, optional)*: The bot prefix.
 * `telemetry` *(telemetry object)*: The telemetry class that will be used. Defaults to None.
+
+##### Properties:
+
 * `commands` *(Protected dictionary, where the keys are strings, and the values are callbacks)*: A list of commands! The
   keys are the command call (every alias is seen as a separate command), and the values are the callback!
 
