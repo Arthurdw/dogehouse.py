@@ -31,7 +31,9 @@ setup(
     keywords=["dogehouse"],
     install_requires=[
         "websockets",
-        "python-dateutil"],
+        "python-dateutil",
+        "represents"
+    ],
     extras_require={
         "telemetry": ["python-socketio[asyncio_client]"]
     },

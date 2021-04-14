@@ -25,10 +25,10 @@ from datetime import datetime
 from typing import Dict, List, Union, Optional
 
 from dateutil.parser import isoparse
+from represents import Represents as Repr
 
 from .utils.convertors import Convertor
 from .utils.parsers import parse_tokens_to_message as parse_tokens
-from .utils.representation import Represents as Repr
 
 
 class BaseUser(Convertor, Repr):
