@@ -51,7 +51,7 @@ async def transmit(client):
 
 
 async def start():
-    await socket.connect("wss://socket.dogehouse.xyz", transports=["websocket"], socketio_path="/socket")
+    await socket.connect("wss://socket.dogegarden.net", transports=["websocket"], socketio_path="/socket")
     await socket.wait()
 
 
