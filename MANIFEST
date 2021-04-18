@@ -8,6 +8,5 @@ dogehouse\config.py
 dogehouse\entities.py
 dogehouse\exceptions.py
 dogehouse\ext\telemetry.py
-dogehouse\utils\__init__.py
 dogehouse\utils\convertors.py
 dogehouse\utils\parsers.py
