@@ -33,10 +33,10 @@ from uuid import uuid4
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 
-from .exceptions import *
-from .utils.convertors import Convertor
 from .config import apiUrl, heartbeatInterval, topPublicRoomsInterval, telemetryInterval
 from .entities import Client, User, Room, UserPreview, Message, BaseUser, Context
+from .exceptions import *
+from .utils.convertors import Convertor
 from .utils.parsers import parse_sentence_to_tokens as parse_message, parse_word_to_token as parse_word
 
 listeners = {}
@@ -192,33 +192,34 @@ class DogeClient(Client):
                         arguments.append(self)
                         parameters.pop(0)
 
-                    if parameters:
-                        arguments.append(ctx)
-                        parameters.pop(0)
-
-                        for idx, (key, param) in enumerate(parameters):
-                            if idx + 1 > len(args) and param.default != Parameter.empty:
-                                params[key] = param.default
-                                continue
-                            else:
-                                value = args[idx]
-
-                                if param.kind == param.KEYWORD_ONLY and len(args) - idx - 1 != 0:
-                                    value = " ".join(args[idx::])
-
-                            value = value.strip()
-
-                            if value and param.annotation and hasattr(param.annotation, "convert") and callable(
-                                    param.annotation.convert):
-                                value = await param.annotation.convert(ctx, param, value)
-                            else:
-                                value = Convertor.handle_basic_types(param, value)
-
-                            params[key] = value
-                        self.__command_cooldown_cache[instance_id] = invoked_at
                     try:
+                        if parameters:
+                            arguments.append(ctx)
+                            parameters.pop(0)
+
+                            for idx, (key, param) in enumerate(parameters):
+                                if idx + 1 > len(args) and param.default != Parameter.empty:
+                                    params[key] = param.default
+                                    continue
+                                else:
+                                    value = args[idx]
+
+                                    if param.kind == param.KEYWORD_ONLY and len(args) - idx - 1 != 0:
+                                        value = " ".join(args[idx::])
+
+                                value = value.strip()
+
+                                if value and param.annotation and hasattr(param.annotation, "convert") and callable(
+                                        param.annotation.convert):
+                                    value = await param.annotation.convert(ctx, param, value)
+                                else:
+                                    value = Convertor.handle_basic_types(param, value)
+
+                                params[key] = value
+                            self.__command_cooldown_cache[instance_id] = invoked_at
+
                         asyncio.ensure_future(_command[0](*arguments, **params))
-                    except TypeError:
+                    except (IndexError, TypeError):
                         raise NotEnoughArguments(
                             f"Not enough arguments were provided in command `{command_name}`.")
                 else:
@@ -506,8 +507,7 @@ class DogeClient(Client):
             return await self.__fetch("create_room", dict(name=str(name), description=str(description),
                                                           privacy="public" if public else "private"))
 
-        raise InvalidSize(
-            "The `name` property length should be 2-60 characters long.")
+        raise InvalidSize("The `name` property length should be 2-60 characters long.")
 
     async def join_room(self, room_id: str) -> None:
         """
@@ -687,9 +687,33 @@ class DogeClient(Client):
                         continue
                 return (*data[0],) if len(data[0]) > 1 else data[0][0]
 
-    async def fetch_user(self, argument: str) -> User:
+    async def fetch_user(self, argument: str, *, tick=0.5, timeout=60) -> User:
         """Currently only calls the DogeClient.get_user method, will implement user fetching in the future tho."""
+        # try:
         return self.get_user(argument)
+        # except MemberNotFound:
+        #     op = "get_user_profile"
+        #     fetch_id = str(uuid4())
+        #
+        #     async def user_fetch_task():
+        #         await self.__send(op, dict(userId=argument), fetch_id=fetch_id)
+        #         self.__fetches[fetch_id] = op
+        #         self.__waiting_for[op] = [*self.__waiting_for[op], fetch_id] if op in self.__waiting_for else [fetch_id]
+        #         passed = 0
+        #         while True:
+        #             print("fetch", passed)
+        #             passed += tick
+        #             await asyncio.sleep(tick)
+        #             if passed > timeout:
+        #                 self.__waiting_for[op].remove(fetch_id)
+        #                 raise asyncio.TimeoutError(f"wait_for event timed out while fetching user `{argument}`")
+        #             elif fetch_id in self.__waiting_for_fetches:
+        #                 data = self.__waiting_for_fetches[fetch_id]
+        #                 return data
+        #
+        #     task = asyncio.ensure_future(user_fetch_task())
+        #     return await task
+
         # TODO: IMPLEMENT USER FETCHING
         #     async def waiter():
         #         return await self.wait_for("user_fetch", fetch_arguments=("get_user_profile", dict(userId=value)))
@@ -740,8 +764,7 @@ class DogeClient(Client):
             if user:
                 return user
 
-        raise MemberNotFound(
-            f"Could not find a member which matches the requested argument. (`{parsed['v']}`)")
+        raise MemberNotFound(f"Could not find a member which matches the requested argument. (`{parsed['v']}`)")
 
 
-DogeBot = DogeClient
+Bot = DogeClient
