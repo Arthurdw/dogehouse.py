@@ -27,7 +27,7 @@ from json import loads, dumps
 from logging import info, debug
 from time import time
 from traceback import print_exc
-from typing import Awaitable, List, Union, Tuple, Any, Dict
+from typing import Awaitable, List, Union, Tuple, Any, Dict, Optional
 from uuid import uuid4
 
 import websockets
@@ -164,14 +164,15 @@ class DogeClient(Client):
             async def execute_listener(listener: str, *args):
                 listener_name = listener.lower()
                 listener = self.__listeners.get(listener_name)
+
                 if listener:
                     asyncio.ensure_future(listener[0](
                         *(args if listener[1] else [self, *args])))
 
-                    if listener_name[3::] in self.__waiting_for:
-                        for fetch_id in self.__waiting_for[listener_name[3::]]:
-                            self.__waiting_for_fetches[fetch_id] = [*self.__waiting_for_fetches[fetch_id], list(args)] \
-                                if fetch_id in self.__waiting_for_fetches else [list(args)]
+                if listener_name[3::] in self.__waiting_for:
+                    for fetch_id in self.__waiting_for[listener_name[3::]]:
+                        self.__waiting_for_fetches[fetch_id] = [*self.__waiting_for_fetches[fetch_id], list(args)] \
+                            if fetch_id in self.__waiting_for_fetches else [list(args)]
 
             async def execute_command(command_name: str, ctx: Context, *args):
                 _command = self.__commands.get(command_name.lower())
@@ -192,33 +193,34 @@ class DogeClient(Client):
                         arguments.append(self)
                         parameters.pop(0)
 
-                    if parameters:
-                        arguments.append(ctx)
-                        parameters.pop(0)
-
-                        for idx, (key, param) in enumerate(parameters):
-                            if idx + 1 > len(args) and param.default != Parameter.empty:
-                                params[key] = param.default
-                                continue
-                            else:
-                                value = args[idx]
-
-                                if param.kind == param.KEYWORD_ONLY and len(args) - idx - 1 != 0:
-                                    value = " ".join(args[idx::])
-
-                            value = value.strip()
-
-                            if value and param.annotation and hasattr(param.annotation, "convert") and callable(
-                                    param.annotation.convert):
-                                value = await param.annotation.convert(ctx, param, value)
-                            else:
-                                value = Convertor.handle_basic_types(param, value)
-
-                            params[key] = value
-                        self.__command_cooldown_cache[instance_id] = invoked_at
                     try:
+                        if parameters:
+                            arguments.append(ctx)
+                            parameters.pop(0)
+
+                            for idx, (key, param) in enumerate(parameters):
+                                if idx + 1 > len(args) and param.default != Parameter.empty:
+                                    params[key] = param.default
+                                    continue
+                                else:
+                                    value = args[idx]
+
+                                    if param.kind == param.KEYWORD_ONLY and len(args) - idx - 1 != 0:
+                                        value = " ".join(args[idx::])
+
+                                value = value.strip()
+
+                                if value and param.annotation and hasattr(param.annotation, "convert") and callable(
+                                        param.annotation.convert):
+                                    value = await param.annotation.convert(ctx, param, value)
+                                else:
+                                    value = Convertor.handle_basic_types(param, value)
+
+                                params[key] = value
+                            self.__command_cooldown_cache[instance_id] = invoked_at
+
                         asyncio.ensure_future(_command[0](*arguments, **params))
-                    except TypeError:
+                    except (IndexError, TypeError):
                         raise NotEnoughArguments(
                             f"Not enough arguments were provided in command `{command_name}`.")
                 else:
@@ -251,10 +253,10 @@ class DogeClient(Client):
                             self.room = Room.from_dict(res["d"]["room"])
                             self.room.users = [self.user]
                         elif fetch == "get_user_profile":
-                            # TODO: USE THIS FOR GLOBAL CACHE
                             usr = User.from_dict(res["d"])
                             info(f"Dogehouse: Received user `{usr.id}`")
-                            self.room.users = [(user if user.id != usr.id else usr) for user in self.room.users]
+                            if usr.current_room_id == self.room.id:
+                                self.room.users = [(user if user.id != usr.id else usr) for user in self.room.users]
                             await execute_listener("on_user_fetch", usr)
                 elif op == "you-joined-as-speaker":
                     await execute_listener("on_room_join", True)
@@ -687,21 +689,21 @@ class DogeClient(Client):
                         continue
                 return (*data[0],) if len(data[0]) > 1 else data[0][0]
 
-    async def fetch_user(self, argument: str) -> User:
-        """Currently only calls the DogeClient.get_user method, will implement user fetching in the future tho."""
-        return self.get_user(argument)
-        # TODO: IMPLEMENT USER FETCHING
-        #     async def waiter():
-        #         return await self.wait_for("user_fetch", fetch_arguments=("get_user_profile", dict(userId=value)))
+    async def fetch_user(self, argument: str) -> Optional[User]:
+        """
+        Goes through the local cache to check if a user can be found.
+        If no user has been found it will send a request to the server to try and fetch that user.
 
-        #     user = await waiter()
+        Args:
+            argument (str): The user argument
 
-        #     if user:
-        #         return user
-
-        #     # user = await self.wait_for("user_fetch", fetch_arguments=("get_user_profile", dict(userId=value)))
-
-        #     raise MemberNotFound(f"Could not fetch a member which matches `{value}`")
+        Returns:
+            User: A user if one got found in the cache, if none got found a None object will be returned.
+        """
+        try:
+            return self.get_user(argument)
+        except MemberNotFound:
+            await self.__fetch("get_user_profile", dict(userId=argument))
 
     def get_user(self, argument: str) -> User:
         """
@@ -709,7 +711,7 @@ class DogeClient(Client):
         Filtering order:
             1. ID match
             2. username match
-            3. displayname match
+            3. display name match
 
         Args:
             argument (str): The user argument.

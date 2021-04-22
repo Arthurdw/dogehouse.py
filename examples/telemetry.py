@@ -67,7 +67,7 @@ class Client(dogehouse.DogeClient):
 
     @dogehouse.event
     async def on_speaker_add(self, user_id: str, _, __):
-        await self.send(f"Welcome to the stage {(await self.fetch_user(user_id)).mention}")
+        await self.send(f"Welcome to the stage {(self.get_user(user_id)).mention}")
 
 
 if __name__ == "__main__":
