@@ -19,6 +19,8 @@ I'd like to say thank you for all the positive support for this project. It was 
 
 & you are free to fork this repository to build out/release your own library.
 
+**This project gets continued in the dogegarden organisation @ https://github.com/dogegarden/dogehouse.py**
+
 Documentation
 -------------
 
