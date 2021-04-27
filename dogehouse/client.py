@@ -27,7 +27,7 @@ from json import loads, dumps
 from logging import info, debug
 from time import time
 from traceback import print_exc
-from typing import Awaitable, List, Union, Tuple, Any, Dict
+from typing import Awaitable, List, Union, Tuple, Any, Dict, Optional
 from uuid import uuid4
 
 import websockets
@@ -164,14 +164,15 @@ class DogeClient(Client):
             async def execute_listener(listener: str, *args):
                 listener_name = listener.lower()
                 listener = self.__listeners.get(listener_name)
+
                 if listener:
                     asyncio.ensure_future(listener[0](
                         *(args if listener[1] else [self, *args])))
 
-                    if listener_name[3::] in self.__waiting_for:
-                        for fetch_id in self.__waiting_for[listener_name[3::]]:
-                            self.__waiting_for_fetches[fetch_id] = [*self.__waiting_for_fetches[fetch_id], list(args)] \
-                                if fetch_id in self.__waiting_for_fetches else [list(args)]
+                if listener_name[3::] in self.__waiting_for:
+                    for fetch_id in self.__waiting_for[listener_name[3::]]:
+                        self.__waiting_for_fetches[fetch_id] = [*self.__waiting_for_fetches[fetch_id], list(args)] \
+                            if fetch_id in self.__waiting_for_fetches else [list(args)]
 
             async def execute_command(command_name: str, ctx: Context, *args):
                 _command = self.__commands.get(command_name.lower())
@@ -252,10 +253,10 @@ class DogeClient(Client):
                             self.room = Room.from_dict(res["d"]["room"])
                             self.room.users = [self.user]
                         elif fetch == "get_user_profile":
-                            # TODO: USE THIS FOR GLOBAL CACHE
                             usr = User.from_dict(res["d"])
                             info(f"Dogehouse: Received user `{usr.id}`")
-                            self.room.users = [(user if user.id != usr.id else usr) for user in self.room.users]
+                            if usr.current_room_id == self.room.id:
+                                self.room.users = [(user if user.id != usr.id else usr) for user in self.room.users]
                             await execute_listener("on_user_fetch", usr)
                 elif op == "you-joined-as-speaker":
                     await execute_listener("on_room_join", True)
@@ -687,6 +688,7 @@ class DogeClient(Client):
                         continue
                 return (*data[0],) if len(data[0]) > 1 else data[0][0]
 
+<<<<<<< HEAD
     async def fetch_user(self, argument: str, *, tick=0.5, timeout=60) -> User:
         """Currently only calls the DogeClient.get_user method, will implement user fetching in the future tho."""
         # try:
@@ -722,10 +724,23 @@ class DogeClient(Client):
 
         #     if user:
         #         return user
+=======
+    async def fetch_user(self, argument: str) -> Optional[User]:
+        """
+        Goes through the local cache to check if a user can be found.
+        If no user has been found it will send a request to the server to try and fetch that user.
+>>>>>>> 134de9535ed487551d22b01b4fb627c45f260f23
 
-        #     # user = await self.wait_for("user_fetch", fetch_arguments=("get_user_profile", dict(userId=value)))
+        Args:
+            argument (str): The user argument
 
-        #     raise MemberNotFound(f"Could not fetch a member which matches `{value}`")
+        Returns:
+            User: A user if one got found in the cache, if none got found a None object will be returned.
+        """
+        try:
+            return self.get_user(argument)
+        except MemberNotFound:
+            await self.__fetch("get_user_profile", dict(userId=argument))
 
     def get_user(self, argument: str) -> User:
         """
@@ -733,7 +748,7 @@ class DogeClient(Client):
         Filtering order:
             1. ID match
             2. username match
-            3. displayname match
+            3. display name match
 
         Args:
             argument (str): The user argument.

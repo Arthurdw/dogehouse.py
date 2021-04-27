@@ -21,24 +21,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Semantic Version
-<<<<<<< HEAD
-__version__ = "2.1.3"
-=======
-__version__ = "2.1.4"
->>>>>>> 134de9535ed487551d22b01b4fb627c45f260f23
+from asyncio.exceptions import TimeoutError
 
-# The socket url for the dogehouse API
-apiUrl = "wss://api.dogehouse.tv/socket"
+from dogehouse import DogeClient, command, event
+from dogehouse.entities import Context
 
-# The websocket heartbeat interval (ping's on this interval)
-heartbeatInterval = 8
 
-# The interval for the public rooms requests
-topPublicRoomsInterval = 15
+class Client(DogeClient):
+    @event
+    async def on_ready(self):
+        await self.create_room("Sample user fetch")
 
-# The interval for the telemetry requests
-telemetryInterval = 30
+    @command
+    async def test(self, ctx: Context, *, argument: str):
+        user = await self.fetch_user(argument)
 
-# The time it should take for the connection to be determined dead.
-connectionTimeout = 15
+        if user is None:
+            try:
+                user = await self.wait_for("user_fetch")
+            except TimeoutError:
+                return await self.send("Could not find that user!")
+
+        await self.send(f"{user.username} | {user.id}", whisper=[ctx.author.id])
+
+
+if __name__ == "__main__":
+    Client("token", "refresh token").run()

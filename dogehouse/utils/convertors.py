@@ -22,6 +22,7 @@
 # SOFTWARE.
 
 from ..exceptions import MemberNotFound
+from asyncio.exceptions import TimeoutError
 
 
 class Convertor:
@@ -38,8 +39,12 @@ class Convertor:
             return argument
 
         try:
-            return await client.fetch_user(argument)
-        except MemberNotFound:
+            user = await client.fetch_user(argument)
+
+            # if user is None:
+            #     user = await client.wait_for("user_fetch", timeout=60)
+            return user
+        except (MemberNotFound, TimeoutError):
             Convertor._member_not_found(convertor, argument)
 
     @staticmethod
